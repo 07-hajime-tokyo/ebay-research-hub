@@ -14,10 +14,11 @@ import {
 import { signOut } from "@/app/actions";
 import { ResearchScheduleWorkspace } from "@/components/research-schedule-workspace";
 import { TrafficFilters } from "@/components/traffic-filters";
-import { genreBadgeClass, rankBadgeClass, TrafficRankingTable } from "@/components/traffic-ranking-table";
+import { TrafficRankingTable } from "@/components/traffic-ranking-table";
 import { requireAppUser } from "@/lib/auth";
 import { getEbayChangeLogs, getEbayTasks, getEbayTrafficItems } from "@/lib/ebay-supabase";
 import { formatNumber } from "@/lib/format";
+import { genreBadgeClass, rankBadgeClass } from "@/lib/traffic-styles";
 import {
   filterTrafficItems,
   sortTrafficItems,
