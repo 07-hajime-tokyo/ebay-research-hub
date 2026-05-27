@@ -6,6 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "sync:thumbnails": "node scripts/sync-research-thumbnails.mjs",
+    "sync:traffic": "node scripts/sync-traffic.mjs",
+    "sync:traffic:supabase": "node scripts/sync-traffic-to-supabase.mjs",
     "start": "next start",
     "lint": "eslint"
   },

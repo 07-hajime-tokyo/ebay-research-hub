@@ -2,92 +2,30 @@
 
 import { useMemo, useState } from "react";
 import { CalendarDays, GripVertical, Plus, Trash2, X } from "lucide-react";
+import type { EbayTask } from "@/lib/ebay-supabase";
 
 type ViewMode = "day" | "week" | "month";
 
-type ResearchTask = {
-  id: string;
-  title: string;
-  status: string;
-  stage: string;
-  date: string;
-  due: string;
-  end: string;
-  owner: string;
-  minutes: number;
-  priority: string;
-  display: string;
-  pinned: boolean;
-  note: string;
-};
+type ResearchTask = EbayTask;
 
 type ResearchTaskInput = Omit<ResearchTask, "id">;
 
-const today = "2026-05-27";
-const now = "14:23";
-
-const emptyTask: ResearchTaskInput = {
-  title: "",
-  status: "未着手",
-  stage: "リサーチ",
-  date: today,
-  due: "10:00",
-  end: "11:00",
-  owner: "",
-  minutes: 60,
-  priority: "中",
-  display: "今日",
-  pinned: false,
-  note: "",
-};
-
-const initialScheduleTasks: ResearchTask[] = [
-  {
-    id: "research-1",
-    title: "価格乖離8,000円以上の商品を目視確認",
-    status: "進行中",
+function makeEmptyTask(today: string): ResearchTaskInput {
+  return {
+    title: "",
+    status: "未着手",
     stage: "リサーチ",
     date: today,
     due: "10:00",
     end: "11:00",
-    owner: "担当A",
+    owner: "",
     minutes: 60,
-    priority: "高",
-    display: "今日",
-    pinned: true,
-    note: "候補判定の商品を優先して確認",
-  },
-  {
-    id: "research-2",
-    title: "Shimano / Daiwa の仕入れ候補を国内リンクで確認",
-    status: "未着手",
-    stage: "仕入れ",
-    date: today,
-    due: "13:00",
-    end: "13:45",
-    owner: "担当B",
-    minutes: 45,
     priority: "中",
     display: "今日",
     pinned: false,
     note: "",
-  },
-  {
-    id: "research-3",
-    title: "kawamura-camera のカメラ商品をカテゴリ別に整理",
-    status: "未着手",
-    stage: "分析",
-    date: "2026-05-28",
-    due: "11:00",
-    end: "12:00",
-    owner: "担当A",
-    minutes: 60,
-    priority: "中",
-    display: "通常",
-    pinned: false,
-    note: "",
-  },
-];
+  };
+}
 
 const stages = ["リサーチ", "仕入れ", "出品準備", "価格確認", "分析", "レビュー", "その他"];
 const statuses = ["未着手", "進行中", "確認待ち", "完了"];
@@ -163,11 +101,38 @@ function normalizeTask(task: ResearchTask): ResearchTaskInput {
   return input;
 }
 
-export function ResearchScheduleWorkspace() {
-  const [tasks, setTasks] = useState(initialScheduleTasks);
+async function saveTaskRequest(task: ResearchTaskInput, id?: string) {
+  const response = await fetch(id ? `/api/ebay/tasks/${id}` : "/api/ebay/tasks", {
+    method: id ? "PATCH" : "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(task),
+  });
+  if (!response.ok) throw new Error(await response.text());
+  const data = await response.json();
+  return data.task as ResearchTask;
+}
+
+async function deleteTaskRequest(id: string) {
+  const response = await fetch(`/api/ebay/tasks/${id}`, { method: "DELETE" });
+  if (!response.ok) throw new Error(await response.text());
+}
+
+export function ResearchScheduleWorkspace({
+  initialTasks = [],
+  todayKey,
+  nowLabel,
+}: {
+  initialTasks?: ResearchTask[];
+  todayKey: string;
+  nowLabel: string;
+}) {
+  const emptyTask = useMemo(() => makeEmptyTask(todayKey), [todayKey]);
+  const [tasks, setTasks] = useState(initialTasks);
   const [view, setView] = useState<ViewMode>("day");
-  const [selectedId, setSelectedId] = useState(initialScheduleTasks[0]?.id ?? "");
-  const [form, setForm] = useState<ResearchTaskInput>(() => normalizeTask(initialScheduleTasks[0]));
+  const [selectedId, setSelectedId] = useState(initialTasks[0]?.id ?? "");
+  const [form, setForm] = useState<ResearchTaskInput>(() =>
+    initialTasks[0] ? normalizeTask(initialTasks[0]) : { ...emptyTask },
+  );
   const [quickTitle, setQuickTitle] = useState("");
   const [quickMinutes, setQuickMinutes] = useState(60);
   const [draggingId, setDraggingId] = useState<string | null>(null);
@@ -175,9 +140,9 @@ export function ResearchScheduleWorkspace() {
   const [message, setMessage] = useState("");
 
   const selectedTask = tasks.find((task) => task.id === selectedId);
-  const todayTasks = useMemo(() => tasks.filter((task) => task.date === today), [tasks]);
+  const todayTasks = useMemo(() => tasks.filter((task) => task.date === todayKey), [tasks, todayKey]);
   const weekDays = useMemo(() => {
-    const start = weekStart(new Date(`${today}T00:00:00+09:00`));
+    const start = weekStart(new Date(`${todayKey}T00:00:00+09:00`));
     return Array.from({ length: 7 }).map((_, index) => {
       const key = dateKey(addDays(start, index));
       const dayTasks = tasks.filter((task) => task.date === key);
@@ -187,10 +152,10 @@ export function ResearchScheduleWorkspace() {
         tasks: dayTasks,
       };
     });
-  }, [tasks]);
+  }, [tasks, todayKey]);
 
   const monthRows = useMemo(() => {
-    const base = new Date(`${today}T00:00:00+09:00`);
+    const base = new Date(`${todayKey}T00:00:00+09:00`);
     const groups = tasks.reduce<Record<string, ResearchTask[]>>((acc, task) => {
       if (!task.date) return acc;
       const date = new Date(`${task.date}T00:00:00+09:00`);
@@ -200,7 +165,7 @@ export function ResearchScheduleWorkspace() {
       return acc;
     }, {});
     return Object.entries(groups).map(([week, weekTasks]) => ({ week, tasks: weekTasks }));
-  }, [tasks]);
+  }, [tasks, todayKey]);
 
   function updateForm<K extends keyof ResearchTaskInput>(key: K, value: ResearchTaskInput[K]) {
     setForm((current) => ({ ...current, [key]: value }));
@@ -212,59 +177,73 @@ export function ResearchScheduleWorkspace() {
     setModalOpen(true);
   }
 
-  function newTask(date = today) {
+  function newTask(date = todayKey) {
     setSelectedId("");
-    setForm({ ...emptyTask, date, display: date === today ? "今日" : "通常" });
+    setForm({ ...emptyTask, date, display: date === todayKey ? "今日" : "通常" });
     setModalOpen(true);
   }
 
-  function saveTask() {
+  async function saveTask() {
     const payload = { ...form, title: form.title.trim(), minutes: Number(form.minutes || 0) };
     if (!payload.title) {
       setMessage("タスク名を入力してください。");
       return;
     }
-    if (selectedTask) {
-      setTasks((current) => current.map((task) => task.id === selectedTask.id ? { ...selectedTask, ...payload } : task));
-      setMessage("タスクを保存しました。");
-    } else {
-      const task = { id: `research-${Date.now()}`, ...payload };
-      setTasks((current) => [task, ...current]);
-      setSelectedId(task.id);
-      setMessage("タスクを追加しました。");
+    try {
+      if (selectedTask) {
+        const task = await saveTaskRequest(payload, selectedTask.id);
+        setTasks((current) => current.map((item) => item.id === selectedTask.id ? task : item));
+        setMessage("タスクを保存しました。");
+      } else {
+        const task = await saveTaskRequest(payload);
+        setTasks((current) => [task, ...current]);
+        setSelectedId(task.id);
+        setMessage("タスクを追加しました。");
+      }
+      setModalOpen(false);
+    } catch {
+      setMessage("保存に失敗しました。");
     }
-    setModalOpen(false);
   }
 
-  function quickAdd() {
+  async function quickAdd() {
     const title = quickTitle.trim();
     if (!title) return;
     const start = form.due || "10:00";
-    const task: ResearchTask = {
-      id: `research-${Date.now()}`,
+    const payload: ResearchTaskInput = {
       ...emptyTask,
       title,
-      date: today,
+      date: todayKey,
       display: "今日",
       minutes: quickMinutes,
       due: start,
       end: timeFromMinutes((minutesFromTime(start) ?? 600) + quickMinutes),
     };
-    setTasks((current) => [task, ...current]);
-    setQuickTitle("");
-    setMessage("タスクを追加しました。");
+    try {
+      const task = await saveTaskRequest(payload);
+      setTasks((current) => [task, ...current]);
+      setQuickTitle("");
+      setMessage("タスクを追加しました。");
+    } catch {
+      setMessage("追加に失敗しました。");
+    }
   }
 
-  function deleteTask() {
+  async function deleteTask() {
     if (!selectedTask) return;
-    setTasks((current) => current.filter((task) => task.id !== selectedTask.id));
-    setSelectedId("");
-    setForm({ ...emptyTask });
-    setModalOpen(false);
-    setMessage("削除しました。");
+    try {
+      await deleteTaskRequest(selectedTask.id);
+      setTasks((current) => current.filter((task) => task.id !== selectedTask.id));
+      setSelectedId("");
+      setForm({ ...emptyTask });
+      setModalOpen(false);
+      setMessage("削除しました。");
+    } catch {
+      setMessage("削除に失敗しました。");
+    }
   }
 
-  function updateTaskTimeFromGrid(clientX: number, task: ResearchTask, rect: DOMRect) {
+  async function updateTaskTimeFromGrid(clientX: number, task: ResearchTask, rect: DOMRect) {
     const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
     const start = Math.round((ratio * 24 * 60) / 15) * 15;
     const payload = {
@@ -273,6 +252,9 @@ export function ResearchScheduleWorkspace() {
       end: timeFromMinutes(start + (task.minutes || 60)),
     };
     setTasks((current) => current.map((item) => item.id === task.id ? payload : item));
+    await saveTaskRequest(normalizeTask(payload), task.id).catch(() => {
+      setMessage("時間変更の保存に失敗しました。");
+    });
   }
 
   function barStyle(task: ResearchTask, index: number) {
@@ -310,15 +292,15 @@ export function ResearchScheduleWorkspace() {
               {item === "day" ? "今日" : item === "week" ? "今週" : "今月"}
             </button>
           ))}
-          <span className="rounded-full border border-[#d8cbb8] bg-white px-3 py-2 text-[#44614f]">ローカル保存</span>
+          <span className="rounded-full border border-[#d8cbb8] bg-white px-3 py-2 text-[#44614f]">Supabase保存</span>
         </div>
       </div>
 
       <div className="min-w-0 space-y-5 p-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="text-sm font-semibold">
-            <span>{formatShortDate(today)}</span>
-            <span className="ml-4 font-mono text-lg">{now}</span>
+            <span>{formatShortDate(todayKey)}</span>
+            <span className="ml-4 font-mono text-lg">{nowLabel}</span>
           </div>
           <div className="flex flex-wrap items-center gap-2 text-xs text-[#7d6f59]">
             <span>{todayTasks.length} tasks</span>
@@ -378,7 +360,7 @@ export function ResearchScheduleWorkspace() {
                   const task = tasks.find((item) => item.id === draggingId);
                   const rect = event.currentTarget.getBoundingClientRect();
                   setDraggingId(null);
-                  if (task) updateTaskTimeFromGrid(event.clientX, task, rect);
+                  if (task) void updateTaskTimeFromGrid(event.clientX, task, rect);
                 }}
                 style={{
                   backgroundImage:

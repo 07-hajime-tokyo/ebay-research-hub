@@ -39,3 +39,32 @@ export type SellerSummary = {
   averageGapJpy: number;
   topBrand: string;
 };
+
+export type TrafficGenre =
+  | "釣具"
+  | "ゴルフ"
+  | "ゲーム"
+  | "カメラ"
+  | "時計"
+  | "ホビー"
+  | "家電"
+  | "その他";
+
+export type TrafficItem = {
+  id: string;
+  title: string;
+  itemId: string;
+  sales: number;
+  totalImpressions: number;
+  organicImpressions: number;
+  searchImpressions: number;
+  storeImpressions: number;
+  views: number;
+  ctr: number;
+  conversionRate: number;
+  itemUrl: string;
+  acquiredAt: string;
+  note: string;
+  imageUrl: string;
+  genre: TrafficGenre;
+};

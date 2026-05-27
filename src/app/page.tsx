@@ -3,133 +3,129 @@ import {
   Boxes,
   CalendarDays,
   Clock3,
-  ExternalLink,
-  Gem,
-  Link2,
+  Eye,
+  History,
+  MousePointerClick,
   Search,
   ShoppingBag,
-  Sparkles,
   Tags,
+  TrendingUp,
 } from "lucide-react";
-import { ProductRankingTable } from "@/components/product-ranking-table";
-import { ResearchFilters } from "@/components/research-filters";
 import { ResearchScheduleWorkspace } from "@/components/research-schedule-workspace";
-import { formatCurrencyJpy, formatCurrencyUsd, formatNumber, formatPercent } from "@/lib/format";
-import { products } from "@/lib/mock-data";
-import { applyThumbnailCache } from "@/lib/thumbnail-cache";
-import type { ResearchProduct, SellerSummary } from "@/lib/types";
+import { TrafficFilters } from "@/components/traffic-filters";
+import { TrafficRankingTable } from "@/components/traffic-ranking-table";
+import { getEbayChangeLogs, getEbayTasks, getEbayTrafficItems } from "@/lib/ebay-supabase";
+import { formatNumber } from "@/lib/format";
+import {
+  filterTrafficItems,
+  sortTrafficItems,
+  summarizeByGenre,
+  summarizeTraffic,
+  trafficItems,
+} from "@/lib/traffic";
 
-function summarizeSellers(items: ResearchProduct[]): SellerSummary[] {
-  const sellers = [...new Set(items.map((item) => item.seller))];
-  return sellers.map((seller) => {
-    const sellerProducts = items.filter((item) => item.seller === seller);
-    const brandCounts = sellerProducts.reduce<Record<string, number>>((acc, item) => {
-      acc[item.brand] = (acc[item.brand] ?? 0) + 1;
-      return acc;
-    }, {});
-    const topBrand = Object.entries(brandCounts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? "-";
-    return {
-      seller,
-      productCount: sellerProducts.length,
-      goCount: sellerProducts.filter((item) => item.decision === "go").length,
-      watchCount: sellerProducts.filter((item) => item.decision === "watch").length,
-      sold30Total: sellerProducts.reduce((sum, item) => sum + item.sold30, 0),
-      averageGapJpy: Math.round(sellerProducts.reduce((sum, item) => sum + item.gapJpy, 0) / sellerProducts.length),
-      topBrand,
-    };
-  });
+function formatRate(value: number) {
+  return `${(value * 100).toFixed(value > 0 && value < 0.01 ? 2 : 1)}%`;
 }
 
-function summarizeBy(items: ResearchProduct[], key: "brand" | "category") {
-  const groups = items.reduce<Record<string, ResearchProduct[]>>((acc, item) => {
-    const value = item[key];
-    acc[value] = [...(acc[value] ?? []), item];
-    return acc;
-  }, {});
-  return Object.entries(groups)
-    .map(([label, group]) => ({
-      label,
-      count: group.length,
-      sold30: group.reduce((sum, item) => sum + item.sold30, 0),
-      goCount: group.filter((item) => item.decision === "go").length,
-      averageGapJpy: Math.round(group.reduce((sum, item) => sum + item.gapJpy, 0) / group.length),
-    }))
-    .sort((a, b) => b.sold30 - a.sold30 || b.averageGapJpy - a.averageGapJpy);
+function getJstNow() {
+  const now = new Date();
+  const dateParts = new Intl.DateTimeFormat("sv-SE", {
+    timeZone: "Asia/Tokyo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(now);
+  const timeParts = new Intl.DateTimeFormat("ja-JP", {
+    timeZone: "Asia/Tokyo",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(now);
+  return { todayKey: dateParts, nowLabel: timeParts };
 }
 
-function sortProducts(items: ResearchProduct[], sort?: string) {
-  return [...items].sort((a, b) => {
-    if (sort === "gap") return b.gapJpy - a.gapJpy;
-    if (sort === "price") return b.totalUsd - a.totalUsd;
-    return b.sold30 - a.sold30 || b.gapJpy - a.gapJpy;
-  });
+function formatTaskDateLabel(key: string) {
+  const date = new Date(`${key}T00:00:00+09:00`);
+  if (Number.isNaN(date.getTime())) return key;
+  return new Intl.DateTimeFormat("ja-JP", {
+    timeZone: "Asia/Tokyo",
+    month: "numeric",
+    day: "numeric",
+    weekday: "short",
+  }).format(date);
 }
 
 export default async function Home({
   searchParams,
 }: {
-  searchParams: Promise<{ seller?: string; category?: string; decision?: string; sort?: string }>;
+  searchParams: Promise<{ genre?: string; trafficSort?: string }>;
 }) {
   const params = await searchParams;
-  const researchProducts = applyThumbnailCache(products);
-  const sellers = [...new Set(researchProducts.map((item) => item.seller))].sort();
-  const categories = [...new Set(researchProducts.map((item) => item.category))].sort();
-  const filteredProducts = sortProducts(
-    researchProducts.filter((item) => {
-      if (params.seller && item.seller !== params.seller) return false;
-      if (params.category && item.category !== params.category) return false;
-      if (params.decision && item.decision !== params.decision) return false;
-      return true;
-    }),
-    params.sort,
-  );
-
-  const sellerSummaries = summarizeSellers(researchProducts).sort((a, b) => b.sold30Total - a.sold30Total);
-  const brandSummaries = summarizeBy(filteredProducts, "brand").slice(0, 5);
-  const categorySummaries = summarizeBy(filteredProducts, "category").slice(0, 5);
-  const topProducts = sortProducts(researchProducts, "sold").slice(0, 4);
-  const goCount = filteredProducts.filter((item) => item.decision === "go").length;
-  const totalSold = filteredProducts.reduce((sum, item) => sum + item.sold30, 0);
-  const averageGap = filteredProducts.length
-    ? Math.round(filteredProducts.reduce((sum, item) => sum + item.gapJpy, 0) / filteredProducts.length)
-    : 0;
-  const averageTotalUsd = filteredProducts.length
-    ? filteredProducts.reduce((sum, item) => sum + item.totalUsd, 0) / filteredProducts.length
-    : 0;
+  const supabaseTrafficItems = await getEbayTrafficItems();
+  const sourceTrafficItems = supabaseTrafficItems?.length ? supabaseTrafficItems : trafficItems;
+  const tasks = await getEbayTasks();
+  const changeHistory = await getEbayChangeLogs();
+  const { todayKey, nowLabel } = getJstNow();
+  const filteredTraffic = sortTrafficItems(filterTrafficItems(sourceTrafficItems, params.genre), params.trafficSort);
+  const summary = summarizeTraffic(filteredTraffic);
+  const allSummary = summarizeTraffic(sourceTrafficItems);
+  const genreSummaries = summarizeByGenre(filteredTraffic);
+  const topViewed = sortTrafficItems(sourceTrafficItems, "views").slice(0, 4);
+  const needsAttention = sourceTrafficItems
+    .filter((item) => item.views >= 100 && item.sales === 0)
+    .sort((a, b) => b.views - a.views)
+    .slice(0, 4);
 
   const navItems = [
     { icon: BarChart3, label: "ダッシュボード" },
-    { icon: ShoppingBag, label: "商品ランキング" },
-    { icon: Tags, label: "ブランド分析" },
-    { icon: Boxes, label: "出品者分析" },
+    { icon: ShoppingBag, label: "トラフィック" },
+    { icon: Tags, label: "ジャンル分析" },
+    { icon: Boxes, label: "出品管理" },
   ];
 
   const kpis = [
-    { label: "商品候補", value: formatNumber(filteredProducts.length), sub: `${sellers.length} sellers`, icon: ShoppingBag },
-    { label: "候補判定", value: formatNumber(goCount), sub: `${formatPercent((goCount / Math.max(filteredProducts.length, 1)) * 100)} of filtered`, icon: Sparkles },
-    { label: "30日Sold", value: formatNumber(totalSold), sub: "filtered total", icon: BarChart3 },
-    { label: "平均価格乖離", value: formatCurrencyJpy(averageGap), sub: `${formatCurrencyUsd(averageTotalUsd)} avg total`, icon: Gem },
+    { label: "出品数", value: formatNumber(summary.itemCount), sub: `全体 ${formatNumber(allSummary.itemCount)} items`, icon: ShoppingBag },
+    { label: "総表示", value: formatNumber(summary.totalImpressions), sub: "impressions", icon: Eye },
+    { label: "総閲覧", value: formatNumber(summary.totalViews), sub: "views", icon: MousePointerClick },
+    { label: "販売数", value: formatNumber(summary.totalSales), sub: `平均CTR ${formatRate(summary.averageCtr)}`, icon: TrendingUp },
   ];
-  const todayTasks = [
-    { title: "価格乖離8,000円以上の商品を目視確認", stage: "リサーチ", owner: "担当A", time: "10:00", minutes: 60 },
-    { title: "Shimano / Daiwa の仕入れ候補を国内リンクで確認", stage: "仕入れ", owner: "担当B", time: "13:00", minutes: 45 },
-  ];
-  const upcomingTasks = [
-    { title: "kawamura-camera のカメラ商品をカテゴリ別に整理", date: "5/28(木)", stage: "分析", owner: "担当A", time: "11:00", minutes: 60 },
-    { title: "○判定商品の出品文テンプレートを作成", date: "5/29(金)", stage: "出品準備", owner: "担当C", time: "15:00", minutes: 90 },
-    { title: "Sold数上位ブランドの週次レビュー", date: "5/30(土)", stage: "レビュー", owner: "担当A", time: "17:00", minutes: 45 },
-  ];
+
+  const todayTasks = tasks
+    .filter((task) => task.date === todayKey)
+    .sort((a, b) => (a.due || "").localeCompare(b.due || ""))
+    .slice(0, 4)
+    .map((task) => ({
+      title: task.title,
+      stage: task.stage,
+      owner: task.owner || "未設定",
+      time: task.due || "--:--",
+      minutes: task.minutes,
+    }));
+  const upcomingTasks = tasks
+    .filter((task) => task.date && task.date > todayKey)
+    .sort((a, b) => `${a.date}${a.due}`.localeCompare(`${b.date}${b.due}`))
+    .slice(0, 5)
+    .map((task) => ({
+      title: task.title,
+      date: formatTaskDateLabel(task.date),
+      stage: task.stage,
+      owner: task.owner || "未設定",
+      time: task.due || "--:--",
+      minutes: task.minutes,
+    }));
+
   return (
     <main className="min-h-screen bg-[#f7f6f2]">
       <div className="flex min-h-screen">
-        <aside className="hidden w-64 shrink-0 border-r border-zinc-200 bg-zinc-950 px-4 py-5 text-white lg:flex lg:flex-col">
+        <aside className="hidden w-64 shrink-0 border-r border-zinc-200 bg-zinc-950 px-4 py-5 text-white">
           <div className="flex items-center gap-3 px-2">
             <div className="flex size-9 items-center justify-center rounded-md bg-[#f3d27b] text-lg font-black text-[#211e18]">
               M
             </div>
             <div>
               <div className="text-lg font-semibold">MarketKit</div>
-              <div className="font-mono text-[11px] text-white/50">research hub</div>
+              <div className="font-mono text-[11px] text-white/50">traffic hub</div>
             </div>
           </div>
           <nav className="mt-8 space-y-1">
@@ -151,14 +147,14 @@ export default async function Home({
               <div className="font-mono text-xs font-semibold uppercase tracking-wide text-zinc-500">
                 Dashboard
               </div>
-              <h1 className="text-lg font-semibold text-zinc-950">eBayリサーチ分析</h1>
+              <h1 className="text-lg font-semibold text-zinc-950">eBay出品トラフィック管理</h1>
             </div>
             <form action="/" className="ml-0 flex flex-1 items-center gap-2 sm:ml-4 sm:max-w-md">
               <div className="relative min-w-0 flex-1">
                 <Search className="absolute left-3 top-2.5 size-4 text-zinc-400" />
                 <input
                   name="q"
-                  placeholder="商品名・ブランド・出品者で検索"
+                  placeholder="商品名・ジャンル・Item IDで検索"
                   className="h-9 w-full rounded-md border border-zinc-200 bg-zinc-50 pl-9 pr-3 text-sm outline-none focus:border-zinc-400"
                 />
               </div>
@@ -178,7 +174,7 @@ export default async function Home({
                     </div>
                     <div>
                       <h2 className="font-semibold">本日のタスク</h2>
-                      <div className="mt-1 text-xs text-[#7d6f59]">今日進めるリサーチ運用</div>
+                      <div className="mt-1 text-xs text-[#7d6f59]">今日進める出品改善</div>
                     </div>
                   </div>
                   <span className="rounded-full border border-[#d8cbb8] bg-[#efe5d4] px-3 py-1 font-mono text-xs font-semibold">
@@ -200,6 +196,11 @@ export default async function Home({
                       </div>
                     </div>
                   ))}
+                  {!todayTasks.length ? (
+                    <div className="rounded-md border border-dashed border-[#d8cbb8] bg-[#fffaf1] p-4 text-sm text-[#7d6f59] md:col-span-2">
+                      本日のタスクはまだありません。
+                    </div>
+                  ) : null}
                 </div>
               </div>
 
@@ -234,52 +235,16 @@ export default async function Home({
                       <span className="rounded bg-[#211e18] px-2 py-1 font-mono text-[11px] text-white">{task.time}</span>
                     </div>
                   ))}
+                  {!upcomingTasks.length ? (
+                    <div className="rounded-md border border-dashed border-[#d8cbb8] bg-[#fffaf1] p-4 text-sm text-[#7d6f59]">
+                      これからのタスクはまだありません。
+                    </div>
+                  ) : null}
                 </div>
               </div>
             </section>
 
-            <details className="group rounded-md border border-[#d8cbb8] bg-[#fbfaf6] p-4 text-[#241f17] shadow-sm">
-              <summary className="flex w-full cursor-pointer list-none flex-wrap items-center justify-between gap-3 text-left">
-                <div className="flex items-center gap-3">
-                  <div className="flex size-8 items-center justify-center rounded-md bg-[#211e18] text-[#f3d27b]">
-                    <Link2 className="size-4" />
-                  </div>
-                  <div>
-                    <h2 className="font-semibold text-[#241f17]">リサーチ元シート</h2>
-                    <div className="mt-1 text-xs text-[#7d6f59]">Driveにある出品者別リサーチシートへすぐ戻れます。</div>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="rounded-full border border-[#d8cbb8] bg-[#efe5d4] px-3 py-1 font-mono text-xs font-semibold">
-                    {sellers.length} sheets
-                  </span>
-                  <span className="rounded-md border border-[#cbb89b] bg-[#efe5d4] px-3 py-1 text-xs font-semibold text-[#5f4f3b]">
-                    <span className="group-open:hidden">開く</span>
-                    <span className="hidden group-open:inline">閉じる</span>
-                  </span>
-                </div>
-              </summary>
-              <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-                {sellerSummaries.slice(0, 4).map((seller) => {
-                  const source = products.find((item) => item.seller === seller.seller);
-                  return (
-                    <a key={seller.seller} href={source?.sheetUrl} target="_blank" rel="noreferrer" className="group rounded-md border border-[#d8cbb8] bg-[#fffaf1] p-3 transition hover:border-[#bba98f] hover:bg-white">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <div className="line-clamp-1 text-sm font-semibold text-[#241f17]">{seller.seller}</div>
-                          <div className="mt-2 line-clamp-2 text-xs text-[#7d6f59]">
-                            {seller.productCount}件 / 候補{seller.goCount}件 / top {seller.topBrand}
-                          </div>
-                        </div>
-                        <ExternalLink className="size-4 shrink-0 text-[#9d8b72] transition group-hover:text-[#211e18]" />
-                      </div>
-                    </a>
-                  );
-                })}
-              </div>
-            </details>
-
-            <section className="hidden gap-3 md:grid-cols-4">
+            <section className="grid gap-3 md:grid-cols-4">
               {kpis.map(({ label, value, sub, icon: Icon }) => (
                 <div key={label} className="rounded-md border border-zinc-200 bg-white p-4">
                   <div className="flex items-center justify-between text-xs font-semibold text-zinc-500">
@@ -300,19 +265,19 @@ export default async function Home({
                       <ShoppingBag className="size-4" />
                     </div>
                     <div>
-                      <h2 className="font-semibold text-[#172033]">商品ランキング / リサーチ判定</h2>
-                      <p className="mt-1 text-xs text-[#667085]">Drive由来のリサーチシートを統合して、狙い目を比較します。</p>
+                      <h2 className="font-semibold text-[#172033]">出品トラフィックランキング</h2>
+                      <p className="mt-1 text-xs text-[#667085]">出品トラフィックシートを元に、表示・閲覧・販売の強さを比較します。</p>
                     </div>
                   </div>
-                  <ResearchFilters
-                    sellers={sellers}
-                    categories={categories}
-                    currentSeller={params.seller}
-                    currentCategory={params.category}
-                    currentSort={params.sort}
-                  />
+                  <TrafficFilters currentGenre={params.genre} currentSort={params.trafficSort} />
                 </div>
-                <ProductRankingTable products={filteredProducts} />
+                {filteredTraffic.length ? (
+                  <TrafficRankingTable items={filteredTraffic.slice(0, 80)} />
+                ) : (
+                  <div className="m-4 rounded-md border border-dashed border-[#cfd8e3] bg-[#f8fafc] p-6 text-sm text-[#667085]">
+                    出品トラフィックの同期データがまだありません。Google Sheets の共有後に `npm run sync:traffic` を実行すると表示されます。
+                  </div>
+                )}
               </div>
 
               <div className="space-y-5">
@@ -323,73 +288,115 @@ export default async function Home({
                         <BarChart3 className="size-4" />
                       </div>
                       <div>
-                        <h2 className="font-semibold text-[#172033]">売れている商品</h2>
-                        <p className="mt-1 text-xs text-[#667085]">Sold数が強い順に確認します。</p>
+                        <h2 className="font-semibold text-[#172033]">閲覧が多い商品</h2>
+                        <p className="mt-1 text-xs text-[#667085]">商品ページまで見られている順です。</p>
                       </div>
                     </div>
                     <span className="rounded-full border border-[#d7dee8] bg-white px-3 py-1 font-mono text-xs font-semibold text-[#334155]">
-                      top {topProducts.length}
+                      top {topViewed.length}
                     </span>
                   </div>
                   <div className="space-y-2 p-4">
-                    {topProducts.map((item, index) => (
-                      <div key={item.id} className="grid grid-cols-[34px_1fr_auto] items-center gap-3 rounded-md border border-zinc-100 p-3 hover:bg-zinc-50">
+                    {topViewed.map((item, index) => (
+                      <a key={item.id} href={item.itemUrl} target="_blank" rel="noreferrer" className="grid grid-cols-[34px_42px_1fr_auto] items-center gap-3 rounded-md border border-zinc-100 p-3 hover:bg-zinc-50">
                         <div className="rounded border border-[#d7dee8] bg-[#f5f8fc] px-2 py-1 text-center text-xs font-semibold text-[#667085]">{index + 1}</div>
+                        <div className="size-10 overflow-hidden rounded-md border border-[#d7dee8] bg-[#eef2f7]">
+                          {item.imageUrl ? <img src={item.imageUrl} alt="" className="size-full object-cover" loading="lazy" /> : null}
+                        </div>
                         <div className="min-w-0">
                           <div className="line-clamp-1 text-sm font-semibold text-[#172033]">{item.title}</div>
-                          <div className="mt-1 text-[11px] text-[#667085]">{item.seller} / {item.brand}</div>
+                          <div className="mt-1 text-[11px] text-[#667085]">{item.genre} / CTR {formatRate(item.ctr)}</div>
                         </div>
                         <span className="rounded bg-[#1f2937] px-2 py-1 font-mono text-[11px] text-white">
-                          {item.sold30} sold
+                          {formatNumber(item.views)}
                         </span>
+                      </a>
+                    ))}
+                  </div>
+                </section>
+
+                <section className="overflow-hidden rounded-md border border-[#d7dee8] bg-white shadow-sm">
+                  <div className="flex items-center gap-3 border-b border-[#d7dee8] bg-[#f5f8fc] px-4 py-2.5">
+                    <div className="flex size-7 items-center justify-center rounded-md bg-[#1f2937] text-[#c7d2fe]">
+                      <Tags className="size-3.5" />
+                    </div>
+                    <div>
+                      <h2 className="text-sm font-semibold text-[#172033]">ジャンル別</h2>
+                      <p className="mt-0.5 text-[11px] text-[#667085]">タイトルから自動分類</p>
+                    </div>
+                  </div>
+                  <div className="divide-y divide-zinc-100 px-3 py-2">
+                    {genreSummaries.map((genre) => (
+                      <div key={genre.genre} className="grid grid-cols-[72px_1fr_auto] items-center gap-2 py-2 text-xs">
+                        <div className="font-semibold text-[#172033]">{genre.genre}</div>
+                        <div className="min-w-0 text-right font-mono text-[#667085]">
+                          {formatNumber(genre.impressions)} 回
+                        </div>
+                        <div className="flex min-w-[92px] justify-end gap-1.5">
+                          <span className="rounded bg-slate-100 px-2 py-1 font-mono text-[11px] text-slate-700">
+                            {formatNumber(genre.count)}
+                          </span>
+                          <span className="rounded bg-emerald-50 px-2 py-1 font-mono text-[11px] text-emerald-700">
+                            {formatNumber(genre.sales)}売
+                          </span>
+                        </div>
                       </div>
                     ))}
+                    {!genreSummaries.length ? <div className="py-3 text-sm text-zinc-500">ジャンル別データはまだありません。</div> : null}
+                  </div>
+                </section>
+
+                <section className="rounded-md border border-zinc-200 bg-white p-4">
+                  <h2 className="font-semibold">改善候補</h2>
+                  <div className="mt-3 space-y-2">
+                    {needsAttention.map((item) => (
+                      <a key={item.id} href={item.itemUrl} target="_blank" rel="noreferrer" className="block rounded-md border border-zinc-100 p-3 text-sm hover:bg-zinc-50">
+                        <span className="line-clamp-1 font-semibold text-zinc-800">{item.title}</span>
+                        <span className="mt-1 block text-xs text-zinc-500">
+                          {formatNumber(item.views)} views / sales 0
+                        </span>
+                      </a>
+                    ))}
+                    {!needsAttention.length ? <div className="text-sm text-zinc-500">表示できる改善候補はまだありません。</div> : null}
                   </div>
                 </section>
 
                 <section className="overflow-hidden rounded-md border border-[#d7dee8] bg-white shadow-sm">
                   <div className="flex items-center gap-3 border-b border-[#d7dee8] bg-[#f5f8fc] px-4 py-3">
                     <div className="flex size-8 items-center justify-center rounded-md bg-[#1f2937] text-[#c7d2fe]">
-                      <Tags className="size-4" />
+                      <History className="size-4" />
                     </div>
                     <div>
-                      <h2 className="font-semibold text-[#172033]">有望ブランド</h2>
-                      <p className="mt-1 text-xs text-[#667085]">Soldと価格乖離から優先候補を確認します。</p>
+                      <h2 className="font-semibold text-[#172033]">変更履歴</h2>
+                      <p className="mt-1 text-xs text-[#667085]">タスク追加やデータ更新の記録を残します。</p>
                     </div>
                   </div>
-                  <div className="space-y-3 p-4">
-                    {brandSummaries.map((brand) => (
-                      <div key={brand.label} className="rounded-md border border-zinc-100 p-3">
-                        <div className="flex items-center justify-between gap-3">
-                          <div className="font-semibold">{brand.label}</div>
-                          <span className="rounded-full bg-emerald-50 px-2 py-1 font-mono text-xs text-emerald-700">
-                            {formatCurrencyJpy(brand.averageGapJpy)}
-                          </span>
-                        </div>
-                        <div className="mt-2 flex items-center justify-between text-xs text-zinc-500">
-                          <span>{brand.count} items / 候補{brand.goCount}</span>
-                          <span>{brand.sold30} sold</span>
+                  <div className="space-y-2 p-4">
+                    {changeHistory.map((item) => (
+                      <div key={item.id} className="rounded-md border border-zinc-100 p-3 text-sm">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <div className="line-clamp-1 font-semibold text-zinc-800">{item.title}</div>
+                            <div className="mt-1 text-xs text-zinc-500">{item.detail}</div>
+                          </div>
+                          <div className="shrink-0 text-right text-[11px] text-zinc-500">
+                            <div>{item.at}</div>
+                            <div>{item.actor}</div>
+                          </div>
                         </div>
                       </div>
                     ))}
-                  </div>
-                </section>
-
-                <section className="rounded-md border border-zinc-200 bg-white p-4">
-                  <h2 className="font-semibold">カテゴリ別</h2>
-                  <div className="mt-3 space-y-2">
-                    {categorySummaries.map((category) => (
-                      <div key={category.label} className="flex items-center justify-between text-sm">
-                        <span className="text-zinc-700">{category.label}</span>
-                        <span className="font-mono text-zinc-600">{category.sold30} sold</span>
+                    {!changeHistory.length ? (
+                      <div className="rounded-md border border-dashed border-zinc-200 bg-zinc-50 p-3 text-sm text-zinc-500">
+                        変更履歴はまだありません。保存処理や同期処理とつなぐと、ここに記録されます。
                       </div>
-                    ))}
+                    ) : null}
                   </div>
                 </section>
               </div>
             </section>
 
-            <ResearchScheduleWorkspace />
+            <ResearchScheduleWorkspace initialTasks={tasks} todayKey={todayKey} nowLabel={nowLabel} />
           </div>
         </section>
       </div>
