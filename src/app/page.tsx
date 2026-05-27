@@ -11,9 +11,11 @@ import {
   Tags,
   TrendingUp,
 } from "lucide-react";
+import { signOut } from "@/app/actions";
 import { ResearchScheduleWorkspace } from "@/components/research-schedule-workspace";
 import { TrafficFilters } from "@/components/traffic-filters";
 import { TrafficRankingTable } from "@/components/traffic-ranking-table";
+import { requireAppUser } from "@/lib/auth";
 import { getEbayChangeLogs, getEbayTasks, getEbayTrafficItems } from "@/lib/ebay-supabase";
 import { formatNumber } from "@/lib/format";
 import {
@@ -62,6 +64,7 @@ export default async function Home({
   searchParams: Promise<{ genre?: string; trafficSort?: string }>;
 }) {
   const params = await searchParams;
+  const user = await requireAppUser();
   const supabaseTrafficItems = await getEbayTrafficItems();
   const sourceTrafficItems = supabaseTrafficItems?.length ? supabaseTrafficItems : trafficItems;
   const tasks = await getEbayTasks();
@@ -162,6 +165,15 @@ export default async function Home({
                 検索
               </button>
             </form>
+            <div className="ml-auto flex items-center gap-2">
+              {user ? (
+                <form action={signOut}>
+                  <button className="h-9 rounded-md border border-zinc-200 bg-white px-3 text-xs font-semibold text-zinc-700">
+                    ログアウト
+                  </button>
+                </form>
+              ) : null}
+            </div>
           </header>
 
           <div className="space-y-5 p-4 sm:p-6">

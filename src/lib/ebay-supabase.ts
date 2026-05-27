@@ -257,7 +257,7 @@ export async function createChangeLog(input: {
   });
 }
 
-export async function createEbayTask(task: Partial<EbayTask>) {
+export async function createEbayTask(task: Partial<EbayTask>, actorEmail?: string) {
   const rows = await supabaseRequest<EbayTaskRow[]>("ebay_tasks?select=id,title,status,stage,task_date,start_time,end_time,owner,minutes,priority,display,pinned,note", {
     method: "POST",
     headers: { Prefer: "return=representation" },
@@ -271,12 +271,13 @@ export async function createEbayTask(task: Partial<EbayTask>) {
       targetId: created.id,
       title: "タスクを追加",
       detail: created.title,
+      actorEmail,
     });
   }
   return created;
 }
 
-export async function updateEbayTask(id: string, task: Partial<EbayTask>) {
+export async function updateEbayTask(id: string, task: Partial<EbayTask>, actorEmail?: string) {
   const rows = await supabaseRequest<EbayTaskRow[]>(
     `ebay_tasks?id=eq.${encodeURIComponent(id)}&select=id,title,status,stage,task_date,start_time,end_time,owner,minutes,priority,display,pinned,note`,
     {
@@ -293,12 +294,13 @@ export async function updateEbayTask(id: string, task: Partial<EbayTask>) {
       targetId: updated.id,
       title: "タスクを更新",
       detail: updated.title,
+      actorEmail,
     });
   }
   return updated;
 }
 
-export async function deleteEbayTask(id: string) {
+export async function deleteEbayTask(id: string, actorEmail?: string) {
   await supabaseRequest(`ebay_tasks?id=eq.${encodeURIComponent(id)}`, {
     method: "DELETE",
     headers: { Prefer: "return=minimal" },
@@ -308,5 +310,6 @@ export async function deleteEbayTask(id: string) {
     targetType: "ebay_task",
     targetId: id,
     title: "タスクを削除",
+    actorEmail,
   });
 }
