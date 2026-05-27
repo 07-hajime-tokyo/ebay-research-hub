@@ -1,14 +1,14 @@
 import type { TrafficGenre } from "@/lib/types";
 
 const genreTone: Record<TrafficGenre, string> = {
-  "釣具": "border-emerald-600 bg-emerald-600 text-white",
-  "ゴルフ": "border-lime-500 bg-lime-500 text-[#1f2937]",
-  "ゲーム": "border-violet-600 bg-violet-600 text-white",
-  "カメラ": "border-blue-600 bg-blue-600 text-white",
-  "時計": "border-amber-500 bg-amber-500 text-[#1f2937]",
-  "ホビー": "border-pink-600 bg-pink-600 text-white",
-  "家電": "border-cyan-600 bg-cyan-600 text-white",
-  "その他": "border-slate-600 bg-slate-600 text-white",
+  "釣具": "border-emerald-200 bg-emerald-50 text-emerald-700",
+  "ゴルフ": "border-lime-200 bg-lime-50 text-lime-700",
+  "ゲーム": "border-violet-200 bg-violet-50 text-violet-700",
+  "カメラ": "border-sky-200 bg-sky-50 text-sky-700",
+  "時計": "border-amber-200 bg-amber-50 text-amber-700",
+  "ホビー": "border-rose-200 bg-rose-50 text-rose-700",
+  "家電": "border-cyan-200 bg-cyan-50 text-cyan-700",
+  "その他": "border-slate-200 bg-slate-50 text-slate-700",
 };
 
 export function genreBadgeClass(genre: TrafficGenre) {
