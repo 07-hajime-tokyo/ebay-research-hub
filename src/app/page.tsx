@@ -129,7 +129,12 @@ export default async function Home({
               M
             </div>
             <div>
-              <div className="text-lg font-semibold">MarketKit</div>
+              <div className="text-lg font-semibold tracking-tight">
+                <span className="text-[#e53238]">e</span>
+                <span className="text-[#0064d2]">B</span>
+                <span className="text-[#f5af02]">a</span>
+                <span className="text-[#86b817]">y</span>
+              </div>
               <div className="font-mono text-[11px] text-white/50">traffic hub</div>
             </div>
           </div>
@@ -152,7 +157,15 @@ export default async function Home({
               <div className="font-mono text-xs font-semibold uppercase tracking-wide text-zinc-500">
                 Dashboard
               </div>
-              <h1 className="text-lg font-semibold text-zinc-950">eBay出品トラフィック管理</h1>
+              <h1 className="text-lg font-semibold text-zinc-950">
+                <span className="mr-1 tracking-tight">
+                  <span className="text-[#e53238]">e</span>
+                  <span className="text-[#0064d2]">B</span>
+                  <span className="text-[#f5af02]">a</span>
+                  <span className="text-[#86b817]">y</span>
+                </span>
+                出品トラフィック管理
+              </h1>
             </div>
             <form action="/" className="ml-0 flex flex-1 items-center gap-2 sm:ml-4 sm:max-w-md">
               <div className="relative min-w-0 flex-1">
