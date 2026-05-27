@@ -178,8 +178,8 @@ export default async function Home({
             </div>
           </header>
 
-          <div className="space-y-5 p-4 sm:p-6">
-            <section className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
+          <div className="space-y-7 p-4 sm:p-6">
+            <section className="grid gap-5 xl:grid-cols-[1.1fr_0.9fr]">
               <div className="rounded-md border border-[#d8cbb8] bg-[#fbfaf6] p-4 text-[#241f17] shadow-sm">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div className="flex items-center gap-3">
@@ -258,7 +258,7 @@ export default async function Home({
               </div>
             </section>
 
-            <section className="grid gap-3 md:grid-cols-4">
+            <section className="grid gap-4 md:grid-cols-4">
               {kpis.map(({ label, value, sub, icon: Icon }) => (
                 <div key={label} className="rounded-md border border-zinc-200 bg-white p-4">
                   <div className="flex items-center justify-between text-xs font-semibold text-zinc-500">
@@ -271,7 +271,7 @@ export default async function Home({
               ))}
             </section>
 
-            <section className="grid gap-5 xl:grid-cols-[1.8fr_1fr]">
+            <section className="grid gap-7 xl:grid-cols-[1.8fr_1fr]">
               <div className="overflow-hidden rounded-md border border-[#d7dee8] bg-white shadow-sm">
                 <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#d7dee8] bg-[#f5f8fc] px-4 py-3">
                   <div className="flex items-center gap-3">
@@ -294,7 +294,7 @@ export default async function Home({
                 )}
               </div>
 
-              <div className="space-y-5">
+              <div className="space-y-6">
                 <section className="overflow-hidden rounded-md border border-[#d7dee8] bg-white shadow-sm">
                   <div className="flex items-center justify-between gap-3 border-b border-[#d7dee8] bg-[#f5f8fc] px-4 py-3">
                     <div className="flex items-center gap-3">
