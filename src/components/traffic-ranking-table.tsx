@@ -131,7 +131,7 @@ export function TrafficRankingTable({ items }: { items: TrafficItem[] }) {
                   href={item.itemUrl}
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex h-8 items-center gap-1 rounded-md border border-[#1f2937] bg-[#1f2937] px-2 text-xs font-semibold text-white shadow-sm transition hover:bg-[#334155]"
+                  className="inline-flex h-8 items-center gap-1 rounded-md border border-sky-200 bg-sky-50 px-2 text-xs font-semibold text-sky-700 shadow-sm transition hover:border-sky-300 hover:bg-sky-100"
                 >
                   <span className="hidden sm:inline">開く</span>
                   <ExternalLink className="size-3" />
