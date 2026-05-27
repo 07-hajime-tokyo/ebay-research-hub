@@ -14,7 +14,7 @@ import {
 import { signOut } from "@/app/actions";
 import { ResearchScheduleWorkspace } from "@/components/research-schedule-workspace";
 import { TrafficFilters } from "@/components/traffic-filters";
-import { TrafficRankingTable } from "@/components/traffic-ranking-table";
+import { genreBadgeClass, rankBadgeClass, TrafficRankingTable } from "@/components/traffic-ranking-table";
 import { requireAppUser } from "@/lib/auth";
 import { getEbayChangeLogs, getEbayTasks, getEbayTrafficItems } from "@/lib/ebay-supabase";
 import { formatNumber } from "@/lib/format";
@@ -311,13 +311,16 @@ export default async function Home({
                   <div className="space-y-2 p-4">
                     {topViewed.map((item, index) => (
                       <a key={item.id} href={item.itemUrl} target="_blank" rel="noreferrer" className="grid grid-cols-[34px_42px_1fr_auto] items-center gap-3 rounded-md border border-zinc-100 p-3 hover:bg-zinc-50">
-                        <div className="rounded border border-[#d7dee8] bg-[#f5f8fc] px-2 py-1 text-center text-xs font-semibold text-[#667085]">{index + 1}</div>
+                        <div className={`rounded border px-2 py-1 text-center text-xs font-semibold ${rankBadgeClass(index)}`}>{index + 1}</div>
                         <div className="size-10 overflow-hidden rounded-md border border-[#d7dee8] bg-[#eef2f7]">
                           {item.imageUrl ? <img src={item.imageUrl} alt="" className="size-full object-cover" loading="lazy" /> : null}
                         </div>
                         <div className="min-w-0">
                           <div className="line-clamp-1 text-sm font-semibold text-[#172033]">{item.title}</div>
-                          <div className="mt-1 text-[11px] text-[#667085]">{item.genre} / CTR {formatRate(item.ctr)}</div>
+                          <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px] text-[#667085]">
+                            <span className={`rounded-full border px-1.5 py-0.5 font-semibold ${genreBadgeClass(item.genre)}`}>{item.genre}</span>
+                            <span>CTR {formatRate(item.ctr)}</span>
+                          </div>
                         </div>
                         <span className="rounded bg-[#1f2937] px-2 py-1 font-mono text-[11px] text-white">
                           {formatNumber(item.views)}
