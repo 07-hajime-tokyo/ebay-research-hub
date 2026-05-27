@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { ExternalLink } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { formatNumber } from "@/lib/format";
 import { genreBadgeClass } from "@/lib/traffic-styles";
 import type { TrafficItem } from "@/lib/types";
@@ -26,9 +27,18 @@ function HeaderHelp({ label, help, align = "left" }: { label: string; help: stri
 }
 
 export function TrafficRankingTable({ items }: { items: TrafficItem[] }) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [visibleCount, setVisibleCount] = useState(20);
   const visibleItems = useMemo(() => items.slice(0, visibleCount), [items, visibleCount]);
   const hasMore = visibleCount < items.length;
+
+  function filterByGenre(genre: string) {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("genre", genre);
+    setVisibleCount(20);
+    router.push(`/?${params.toString()}`);
+  }
 
   return (
     <div>
@@ -102,9 +112,14 @@ export function TrafficRankingTable({ items }: { items: TrafficItem[] }) {
                 </div>
               </td>
               <td className="px-2 py-3">
-                <span className={`inline-flex max-w-full justify-center truncate rounded-full border px-2 py-1 text-xs font-semibold ${genreBadgeClass(item.genre)}`}>
+                <button
+                  type="button"
+                  onClick={() => filterByGenre(item.genre)}
+                  className={`inline-flex max-w-full justify-center truncate rounded-full border px-2 py-1 text-xs font-semibold transition hover:-translate-y-px hover:shadow-sm ${genreBadgeClass(item.genre)}`}
+                  title={`${item.genre}だけ表示`}
+                >
                   {item.genre}
-                </span>
+                </button>
               </td>
               <td className="px-2 py-3 text-right font-mono text-[13px] font-semibold text-[#172033]">{formatNumber(item.sales)}</td>
               <td className="px-2 py-3 text-right font-mono text-[13px]">{formatNumber(item.totalImpressions)}</td>
@@ -116,7 +131,7 @@ export function TrafficRankingTable({ items }: { items: TrafficItem[] }) {
                   href={item.itemUrl}
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex h-8 items-center gap-1 rounded-md border border-[#cfd8e3] px-2 text-xs font-semibold text-[#334155] hover:bg-[#f5f8fc]"
+                  className="inline-flex h-8 items-center gap-1 rounded-md border border-[#1f2937] bg-[#1f2937] px-2 text-xs font-semibold text-white shadow-sm transition hover:bg-[#334155]"
                 >
                   <span className="hidden sm:inline">開く</span>
                   <ExternalLink className="size-3" />

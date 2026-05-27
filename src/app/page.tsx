@@ -12,6 +12,7 @@ import {
   TrendingUp,
 } from "lucide-react";
 import { signOut } from "@/app/actions";
+import { ChangeHistoryList } from "@/components/change-history-list";
 import { ResearchScheduleWorkspace } from "@/components/research-schedule-workspace";
 import { TrafficFilters } from "@/components/traffic-filters";
 import { TrafficRankingTable } from "@/components/traffic-ranking-table";
@@ -388,25 +389,7 @@ export default async function Home({
                     </div>
                   </div>
                   <div className="space-y-2 p-4">
-                    {changeHistory.map((item) => (
-                      <div key={item.id} className="rounded-md border border-zinc-100 p-3 text-sm">
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="min-w-0">
-                            <div className="line-clamp-1 font-semibold text-zinc-800">{item.title}</div>
-                            <div className="mt-1 text-xs text-zinc-500">{item.detail}</div>
-                          </div>
-                          <div className="shrink-0 text-right text-[11px] text-zinc-500">
-                            <div>{item.at}</div>
-                            <div>{item.actor}</div>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                    {!changeHistory.length ? (
-                      <div className="rounded-md border border-dashed border-zinc-200 bg-zinc-50 p-3 text-sm text-zinc-500">
-                        変更履歴はまだありません。保存処理や同期処理とつなぐと、ここに記録されます。
-                      </div>
-                    ) : null}
+                    <ChangeHistoryList items={changeHistory} />
                   </div>
                 </section>
               </div>
