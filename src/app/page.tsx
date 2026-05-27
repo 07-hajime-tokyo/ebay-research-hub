@@ -266,7 +266,7 @@ export default async function Home({
                     </div>
                     <div>
                       <h2 className="font-semibold text-[#172033]">出品トラフィックランキング</h2>
-                      <p className="mt-1 text-xs text-[#667085]">出品トラフィックシートを元に、表示・閲覧・販売の強さを比較します。</p>
+                      <p className="mt-1 text-xs text-[#667085]">Supabase同期データを元に、表示・閲覧・販売の強さを比較します。</p>
                     </div>
                   </div>
                   <TrafficFilters currentGenre={params.genre} currentSort={params.trafficSort} />
