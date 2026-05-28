@@ -121,11 +121,11 @@ export function TrafficRankingTable({ items }: { items: TrafficItem[] }) {
                   {item.genre}
                 </button>
               </td>
-              <td className="px-2 py-3 text-right font-mono text-[13px] font-semibold text-[#172033]">{formatNumber(item.sales)}</td>
-              <td className="px-2 py-3 text-right font-mono text-[13px]">{formatNumber(item.totalImpressions)}</td>
-              <td className="px-2 py-3 text-right font-mono text-[13px]">{formatNumber(item.views)}</td>
-              <td className="px-2 py-3 text-right font-mono text-[13px]">{formatRate(item.ctr)}</td>
-              <td className="px-2 py-3 text-right font-mono text-[13px]">{formatRate(item.conversionRate)}</td>
+              <td className="px-2 py-3 text-right font-mono text-sm font-bold text-[#172033]">{formatNumber(item.sales)}</td>
+              <td className="px-2 py-3 text-right font-mono text-sm font-bold text-[#172033]">{formatNumber(item.totalImpressions)}</td>
+              <td className="px-2 py-3 text-right font-mono text-sm font-bold text-[#172033]">{formatNumber(item.views)}</td>
+              <td className="px-2 py-3 text-right font-mono text-sm font-bold text-[#172033]">{formatRate(item.ctr)}</td>
+              <td className="px-2 py-3 text-right font-mono text-sm font-bold text-[#172033]">{formatRate(item.conversionRate)}</td>
               <td className="px-2 py-3">
                 <a
                   href={item.itemUrl}
