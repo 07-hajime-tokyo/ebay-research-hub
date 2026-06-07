@@ -99,6 +99,13 @@ function stringFrom(value: unknown) {
   return String(value ?? "").trim();
 }
 
+function conversionRateFrom(sales: number, views: number, sourceValue: unknown) {
+  const sourceRate = numberFrom(sourceValue);
+  if (sourceRate > 0) return sourceRate;
+  if (sales > 0 && views > 0) return sales / views;
+  return sourceRate;
+}
+
 function timestampFrom(value: unknown) {
   const text = stringFrom(value);
   if (!text) return null;
@@ -199,20 +206,22 @@ export async function readEbayTrafficItems(maxRows = 5000) {
       const title = stringFrom(row[indexes.title]) || stringFrom(row[indexes.internalTitle]);
       const itemId = stringFrom(row[indexes.itemId]);
       const itemUrl = stringFrom(row[indexes.itemUrl]) || stringFrom(row[indexes.internalUrl]) || (itemId ? `https://www.ebay.com/itm/${itemId}` : "");
+      const sales = numberFrom(row[indexes.sales]);
+      const views = numberFrom(row[indexes.views]);
       return {
         item_id: itemId,
         title,
         genre: inferGenre(title),
         image_url: stringFrom(row[indexes.imageUrl]) || null,
         item_url: itemUrl || null,
-        sales: numberFrom(row[indexes.sales]),
+        sales,
         total_impressions: numberFrom(row[indexes.totalImpressions]),
         organic_impressions: numberFrom(row[indexes.organicImpressions]),
         search_impressions: numberFrom(row[indexes.searchImpressions]),
         store_impressions: numberFrom(row[indexes.storeImpressions]),
-        views: numberFrom(row[indexes.views]),
+        views,
         click_rate: numberFrom(row[indexes.clickRate]),
-        conversion_rate: numberFrom(row[indexes.conversionRate]),
+        conversion_rate: conversionRateFrom(sales, views, row[indexes.conversionRate]),
         acquired_at: timestampFrom(row[indexes.acquiredAt]),
         source_spreadsheet_id: SPREADSHEET_ID,
         source_sheet_name: SHEET_NAME,
