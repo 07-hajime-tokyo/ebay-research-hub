@@ -55,11 +55,14 @@ export type TrafficItem = {
   title: string;
   itemId: string;
   sales: number;
+  salesDelta?: number | null;
   totalImpressions: number;
+  totalImpressionsDelta?: number | null;
   organicImpressions: number;
   searchImpressions: number;
   storeImpressions: number;
   views: number;
+  viewsDelta?: number | null;
   ctr: number;
   conversionRate: number;
   itemUrl: string;

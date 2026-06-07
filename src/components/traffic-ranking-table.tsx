@@ -26,6 +26,28 @@ function HeaderHelp({ label, help, align = "left" }: { label: string; help: stri
   );
 }
 
+function formatDelta(value?: number | null) {
+  if (value == null) return "--";
+  if (value === 0) return "±0";
+  return `${value > 0 ? "+" : ""}${formatNumber(value)}`;
+}
+
+function deltaClass(value?: number | null) {
+  if (value == null || value === 0) return "text-[#94a3b8]";
+  return value > 0 ? "text-emerald-600" : "text-rose-600";
+}
+
+function MetricCell({ value, delta }: { value: number; delta?: number | null }) {
+  return (
+    <div className="text-right font-mono">
+      <div className="text-sm font-bold text-[#172033]">{formatNumber(value)}</div>
+      <div className={`mt-0.5 text-[10px] font-semibold leading-none ${deltaClass(delta)}`}>
+        {formatDelta(delta)}
+      </div>
+    </div>
+  );
+}
+
 export function TrafficRankingTable({ items }: { items: TrafficItem[] }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -121,9 +143,9 @@ export function TrafficRankingTable({ items }: { items: TrafficItem[] }) {
                   {item.genre}
                 </button>
               </td>
-              <td className="px-2 py-3 text-right font-mono text-sm font-bold text-[#172033]">{formatNumber(item.sales)}</td>
-              <td className="px-2 py-3 text-right font-mono text-sm font-bold text-[#172033]">{formatNumber(item.totalImpressions)}</td>
-              <td className="px-2 py-3 text-right font-mono text-sm font-bold text-[#172033]">{formatNumber(item.views)}</td>
+              <td className="px-2 py-3"><MetricCell value={item.sales} delta={item.salesDelta} /></td>
+              <td className="px-2 py-3"><MetricCell value={item.totalImpressions} delta={item.totalImpressionsDelta} /></td>
+              <td className="px-2 py-3"><MetricCell value={item.views} delta={item.viewsDelta} /></td>
               <td className="px-2 py-3 text-right font-mono text-sm font-bold text-[#172033]">{formatRate(item.ctr)}</td>
               <td className="px-2 py-3 text-right font-mono text-sm font-bold text-[#172033]">{formatRate(item.conversionRate)}</td>
               <td className="px-2 py-3">

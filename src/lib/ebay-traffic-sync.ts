@@ -124,6 +124,45 @@ function chunk<T>(items: T[], size: number) {
   return chunks;
 }
 
+function tokyoDateString(value = new Date()) {
+  return new Intl.DateTimeFormat("sv-SE", {
+    timeZone: "Asia/Tokyo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(value);
+}
+
+function snapshotRows(items: Array<{
+  item_id: string;
+  title: string;
+  genre: string;
+  sales: number;
+  total_impressions: number;
+  views: number;
+  click_rate: number;
+  conversion_rate: number;
+  acquired_at: string | null;
+  source_spreadsheet_id: string;
+  source_sheet_name: string;
+}>) {
+  const snapshotDate = tokyoDateString();
+  return items.map((item) => ({
+    item_id: item.item_id,
+    snapshot_date: snapshotDate,
+    title: item.title,
+    genre: item.genre,
+    sales: item.sales,
+    total_impressions: item.total_impressions,
+    views: item.views,
+    click_rate: item.click_rate,
+    conversion_rate: item.conversion_rate,
+    acquired_at: item.acquired_at,
+    source_spreadsheet_id: item.source_spreadsheet_id,
+    source_sheet_name: item.source_sheet_name,
+  }));
+}
+
 export async function readEbayTrafficItems(maxRows = 5000) {
   const accessToken = await getAccessToken();
   const range = encodeURIComponent(`${SHEET_NAME}!A4:Q${maxRows}`);
@@ -200,6 +239,16 @@ export async function syncEbayTrafficToSupabase() {
       body: JSON.stringify(group),
     });
     upserted += group.length;
+  }
+
+  for (const group of chunk(snapshotRows(items), 500)) {
+    await supabaseRequest("ebay_traffic_daily_snapshots?on_conflict=item_id,snapshot_date", {
+      method: "POST",
+      headers: {
+        Prefer: "resolution=merge-duplicates,return=minimal",
+      },
+      body: JSON.stringify(group),
+    });
   }
 
   await createChangeLog({

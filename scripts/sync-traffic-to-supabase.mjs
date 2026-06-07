@@ -222,6 +222,33 @@ function chunk(items, size) {
   return chunks;
 }
 
+function tokyoDateString(value = new Date()) {
+  return new Intl.DateTimeFormat("sv-SE", {
+    timeZone: "Asia/Tokyo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(value);
+}
+
+function snapshotRows(items) {
+  const snapshotDate = tokyoDateString();
+  return items.map((item) => ({
+    item_id: item.item_id,
+    snapshot_date: snapshotDate,
+    title: item.title,
+    genre: item.genre,
+    sales: item.sales,
+    total_impressions: item.total_impressions,
+    views: item.views,
+    click_rate: item.click_rate,
+    conversion_rate: item.conversion_rate,
+    acquired_at: item.acquired_at,
+    source_spreadsheet_id: item.source_spreadsheet_id,
+    source_sheet_name: item.source_sheet_name,
+  }));
+}
+
 async function supabaseRequest(path, options = {}) {
   const supabaseUrl = requireEnv(["NEXT_PUBLIC_SUPABASE_URL", "PROJECT_SUPABASE_URL"]);
   const serviceRoleKey = requireEnv(["SUPABASE_SERVICE_ROLE_KEY", "PROJECT_SUPABASE_SERVICE_ROLE_KEY"]);
@@ -245,6 +272,21 @@ async function upsertTrafficItems(items) {
   let upserted = 0;
   for (const group of chunk(items, 500)) {
     await supabaseRequest("ebay_traffic_items?on_conflict=item_id", {
+      method: "POST",
+      headers: {
+        Prefer: "resolution=merge-duplicates,return=minimal",
+      },
+      body: JSON.stringify(group),
+    });
+    upserted += group.length;
+  }
+  return upserted;
+}
+
+async function upsertTrafficSnapshots(items) {
+  let upserted = 0;
+  for (const group of chunk(snapshotRows(items), 500)) {
+    await supabaseRequest("ebay_traffic_daily_snapshots?on_conflict=item_id,snapshot_date", {
       method: "POST",
       headers: {
         Prefer: "resolution=merge-duplicates,return=minimal",
@@ -282,6 +324,7 @@ async function main() {
     ? await readGeneratedTrafficItems()
     : await readTrafficItems();
   const upserted = await upsertTrafficItems(items);
+  await upsertTrafficSnapshots(items);
   await insertChangeLog(upserted);
   console.log(`synced ${upserted} ebay traffic items to Supabase`);
 }

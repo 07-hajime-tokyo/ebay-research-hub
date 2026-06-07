@@ -19,6 +19,14 @@ type EbayTrafficRow = {
   note: string | null;
 };
 
+type EbayTrafficSnapshotRow = {
+  item_id: string;
+  snapshot_date: string;
+  sales: number | null;
+  total_impressions: number | null;
+  views: number | null;
+};
+
 export type ChangeLogItem = {
   id: string;
   title: string;
@@ -183,7 +191,31 @@ export async function getEbayTrafficItems() {
   );
   if (!rows) return null;
 
+  const since = new Date();
+  since.setDate(since.getDate() - 14);
+  const snapshotRows = await supabaseGet<EbayTrafficSnapshotRow[]>(
+    `ebay_traffic_daily_snapshots?select=item_id,snapshot_date,sales,total_impressions,views&snapshot_date=gte.${since.toISOString().slice(0, 10)}&order=snapshot_date.desc&limit=2000`,
+  );
+  const snapshotDates = Array.from(new Set((snapshotRows ?? []).map((row) => row.snapshot_date))).sort().reverse();
+  const previousSnapshotDate = snapshotDates[1];
+  const previousByItem = new Map(
+    (snapshotRows ?? [])
+      .filter((row) => row.snapshot_date === previousSnapshotDate)
+      .map((row) => [row.item_id, row]),
+  );
+
   return rows.map((row): TrafficItem => ({
+    ...(previousByItem.has(row.item_id)
+      ? {
+          salesDelta: (row.sales ?? 0) - (previousByItem.get(row.item_id)?.sales ?? 0),
+          totalImpressionsDelta: (row.total_impressions ?? 0) - (previousByItem.get(row.item_id)?.total_impressions ?? 0),
+          viewsDelta: (row.views ?? 0) - (previousByItem.get(row.item_id)?.views ?? 0),
+        }
+      : {
+          salesDelta: null,
+          totalImpressionsDelta: null,
+          viewsDelta: null,
+        }),
     id: row.item_id,
     title: row.title,
     itemId: row.item_id,
