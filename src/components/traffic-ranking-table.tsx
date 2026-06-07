@@ -37,12 +37,14 @@ function deltaClass(value?: number | null) {
   return value > 0 ? "text-emerald-600" : "text-rose-600";
 }
 
-function MetricCell({ value, delta }: { value: number; delta?: number | null }) {
+function MetricCell({ value, delta, mutedDelta }: { value: number | string; delta?: number | null; mutedDelta?: boolean }) {
   return (
     <div className="text-right font-mono">
-      <div className="text-sm font-bold text-[#172033]">{formatNumber(value)}</div>
-      <div className={`mt-0.5 text-[10px] font-semibold leading-none ${deltaClass(delta)}`}>
-        {formatDelta(delta)}
+      <div className="text-sm font-bold leading-5 text-[#172033]">
+        {typeof value === "number" ? formatNumber(value) : value}
+      </div>
+      <div className={`mt-0.5 text-[10px] font-semibold leading-3 ${mutedDelta ? "invisible" : deltaClass(delta)}`}>
+        {mutedDelta ? "0" : formatDelta(delta)}
       </div>
     </div>
   );
@@ -146,8 +148,8 @@ export function TrafficRankingTable({ items }: { items: TrafficItem[] }) {
               <td className="px-2 py-3"><MetricCell value={item.sales} delta={item.salesDelta} /></td>
               <td className="px-2 py-3"><MetricCell value={item.totalImpressions} delta={item.totalImpressionsDelta} /></td>
               <td className="px-2 py-3"><MetricCell value={item.views} delta={item.viewsDelta} /></td>
-              <td className="px-2 py-3 text-right font-mono text-sm font-bold text-[#172033]">{formatRate(item.ctr)}</td>
-              <td className="px-2 py-3 text-right font-mono text-sm font-bold text-[#172033]">{formatRate(item.conversionRate)}</td>
+              <td className="px-2 py-3"><MetricCell value={formatRate(item.ctr)} mutedDelta /></td>
+              <td className="px-2 py-3"><MetricCell value={formatRate(item.conversionRate)} mutedDelta /></td>
               <td className="px-2 py-3">
                 <a
                   href={item.itemUrl}
