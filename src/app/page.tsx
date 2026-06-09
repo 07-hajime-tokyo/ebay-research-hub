@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { signOut } from "@/app/actions";
 import { ChangeHistoryList } from "@/components/change-history-list";
+import { getImprovementCandidates, ImprovementCandidateList } from "@/components/improvement-candidate-list";
 import { ResearchScheduleWorkspace } from "@/components/research-schedule-workspace";
 import { TrafficFilters } from "@/components/traffic-filters";
 import { TrafficRankingTable } from "@/components/traffic-ranking-table";
@@ -77,10 +78,7 @@ export default async function Home({
   const allSummary = summarizeTraffic(sourceTrafficItems);
   const genreSummaries = summarizeByGenre(filteredTraffic);
   const topViewed = sortTrafficItems(sourceTrafficItems, "views").slice(0, 4);
-  const needsAttention = sourceTrafficItems
-    .filter((item) => item.views >= 100 && item.sales === 0)
-    .sort((a, b) => b.views - a.views)
-    .slice(0, 4);
+  const improvementCandidates = getImprovementCandidates(sourceTrafficItems);
 
   const navItems = [
     { icon: BarChart3, label: "ダッシュボード" },
@@ -376,18 +374,20 @@ export default async function Home({
                   </div>
                 </section>
 
-                <section className="rounded-md border border-zinc-200 bg-white p-4">
-                  <h2 className="font-semibold">改善候補</h2>
-                  <div className="mt-3 space-y-2">
-                    {needsAttention.map((item) => (
-                      <a key={item.id} href={item.itemUrl} target="_blank" rel="noreferrer" className="block rounded-md border border-zinc-100 p-3 text-sm hover:bg-zinc-50">
-                        <span className="line-clamp-1 font-semibold text-zinc-800">{item.title}</span>
-                        <span className="mt-1 block text-xs text-zinc-500">
-                          {formatNumber(item.views)} views / sales 0
-                        </span>
-                      </a>
-                    ))}
-                    {!needsAttention.length ? <div className="text-sm text-zinc-500">表示できる改善候補はまだありません。</div> : null}
+                <section className="overflow-hidden rounded-md border border-zinc-200 bg-white shadow-sm">
+                  <div className="flex items-center justify-between gap-3 border-b border-zinc-200 bg-[#fffaf1] px-4 py-3">
+                    <div>
+                      <h2 className="font-semibold text-zinc-900">改善候補</h2>
+                      <p className="mt-1 text-xs text-zinc-500">
+                        販売0の商品から、閲覧数とインプレッションが強い順に確認します。
+                      </p>
+                    </div>
+                    <span className="shrink-0 rounded-full border border-zinc-200 bg-white px-3 py-1 font-mono text-xs font-semibold text-zinc-700">
+                      {improvementCandidates.length} / 20
+                    </span>
+                  </div>
+                  <div className="p-4">
+                    <ImprovementCandidateList items={improvementCandidates} />
                   </div>
                 </section>
 
