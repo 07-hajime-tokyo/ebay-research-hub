@@ -4,7 +4,7 @@ import {
   createEbayImprovementLog,
   getEbayImprovementLogs,
   resolveEbayImprovementLog,
-  updateEbayImprovementMemo,
+  updateEbayImprovementLog,
 } from "@/lib/ebay-supabase";
 
 export async function GET() {
@@ -56,15 +56,16 @@ export async function PATCH(request: Request) {
 
   const payload = await request.json();
   const id = String(payload.id ?? "").trim();
+  const improvement = String(payload.improvement ?? "").trim();
   const memo = String(payload.memo ?? "").trim();
 
-  if (!id) {
-    return NextResponse.json({ error: "id is required." }, { status: 400 });
+  if (!id || !improvement) {
+    return NextResponse.json({ error: "id and improvement are required." }, { status: 400 });
   }
 
-  const item = await updateEbayImprovementMemo(id, memo, user?.email ?? undefined);
+  const item = await updateEbayImprovementLog(id, { improvement, memo }, user?.email ?? undefined);
   if (!item) {
-    return NextResponse.json({ error: "Failed to update memo." }, { status: 500 });
+    return NextResponse.json({ error: "Failed to update improvement." }, { status: 500 });
   }
 
   return NextResponse.json({ improvement: item });

@@ -126,15 +126,15 @@ async function saveImprovementRequest(target: ImprovementTarget, draft: Draft) {
   return data.improvement as EbayImprovement;
 }
 
-async function saveMemoRequest(id: string, memo: string) {
+async function saveImprovementEditRequest(id: string, draft: Draft) {
   const response = await fetch("/api/ebay/improvements", {
     method: "PATCH",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ id, memo }),
+    body: JSON.stringify({ id, improvement: draft.improvement, memo: draft.memo }),
   });
   if (!response.ok) throw new Error(await response.text());
   const data = await response.json();
-  if (!data.improvement?.id) throw new Error("Memo was not saved.");
+  if (!data.improvement?.id) throw new Error("Improvement edit was not saved.");
   return data.improvement as EbayImprovement;
 }
 
@@ -265,6 +265,52 @@ function DraftEditor({
   );
 }
 
+function ExistingImprovementEditor({
+  draft,
+  isSaving,
+  hasChanges,
+  onChange,
+  onSave,
+}: {
+  draft: Draft;
+  isSaving: boolean;
+  hasChanges: boolean;
+  onChange: (draft: Draft) => void;
+  onSave: () => void;
+}) {
+  return (
+    <div className="mt-3 rounded-md border border-zinc-200 bg-white p-2">
+      <label className="block">
+        <span className="mb-1 block text-[11px] font-semibold text-zinc-600">改善内容</span>
+        <textarea
+          value={draft.improvement}
+          onChange={(event) => onChange({ ...draft, improvement: event.target.value })}
+          rows={2}
+          className="w-full resize-none rounded-md border border-zinc-200 bg-zinc-50 px-2 py-2 text-xs leading-relaxed text-zinc-800 outline-none focus:border-zinc-400"
+        />
+      </label>
+      <label className="mt-2 block">
+        <span className="mb-1 block text-[11px] font-semibold text-zinc-600">メモ</span>
+        <textarea
+          value={draft.memo}
+          onChange={(event) => onChange({ ...draft, memo: event.target.value })}
+          placeholder="例: 売れたら削除 / 1週間後にCTRを見る"
+          rows={2}
+          className="w-full resize-none rounded-md border border-zinc-200 bg-zinc-50 px-2 py-2 text-xs leading-relaxed text-zinc-800 outline-none focus:border-zinc-400"
+        />
+      </label>
+      <button
+        type="button"
+        onClick={onSave}
+        disabled={isSaving || !hasChanges || !draft.improvement.trim()}
+        className="mt-2 inline-flex h-8 w-full items-center justify-center gap-2 rounded-md border border-zinc-200 bg-white px-3 text-xs font-semibold text-zinc-700 disabled:cursor-not-allowed disabled:text-zinc-300"
+      >
+        {isSaving ? "保存中" : "編集を保存"}
+      </button>
+    </div>
+  );
+}
+
 export function ImprovementCandidateList({
   items,
   initialImprovements = [],
@@ -275,9 +321,9 @@ export function ImprovementCandidateList({
   const [tab, setTab] = useState<TabMode>("pending");
   const [improvements, setImprovements] = useState(initialImprovements);
   const [drafts, setDrafts] = useState<Record<string, Draft>>({});
-  const [memoDrafts, setMemoDrafts] = useState<Record<string, string>>({});
+  const [editDrafts, setEditDrafts] = useState<Record<string, Draft>>({});
   const [savingId, setSavingId] = useState("");
-  const [savingMemoId, setSavingMemoId] = useState("");
+  const [savingEditId, setSavingEditId] = useState("");
   const [removingId, setRemovingId] = useState("");
   const [message, setMessage] = useState("");
 
@@ -314,6 +360,18 @@ export function ImprovementCandidateList({
     setDrafts((current) => ({ ...current, [itemId]: value }));
   }
 
+  function getEditDraft(item: EbayImprovement) {
+    return editDrafts[item.id] ?? { improvement: item.improvement, memo: item.memo };
+  }
+
+  function updateEditDraft(id: string, value: Draft) {
+    setEditDrafts((current) => ({ ...current, [id]: value }));
+  }
+
+  function hasEditChanges(item: EbayImprovement, draft: Draft) {
+    return draft.improvement.trim() !== item.improvement || draft.memo.trim() !== item.memo;
+  }
+
   function mergeImprovement(saved: EbayImprovement) {
     setImprovements((current) => [saved, ...current.filter((entry) => entry.id !== saved.id)]);
   }
@@ -344,19 +402,31 @@ export function ImprovementCandidateList({
     }
   }
 
-  async function saveMemo(item: EbayImprovement) {
-    const memo = (memoDrafts[item.id] ?? item.memo).trim();
-    setSavingMemoId(item.id);
+  async function saveEditedImprovement(item: EbayImprovement) {
+    const draft = getEditDraft(item);
+    const improvement = draft.improvement.trim();
+    if (!improvement) {
+      setMessage("改善内容を入力してください。");
+      return;
+    }
+
+    setSavingEditId(item.id);
     setMessage("");
     try {
-      const saved = await saveMemoRequest(item.id, memo);
+      const saved = await saveImprovementEditRequest(item.id, {
+        improvement,
+        memo: draft.memo.trim(),
+      });
       mergeImprovement(saved);
-      setMemoDrafts((current) => ({ ...current, [item.id]: saved.memo }));
-      setMessage("メモを保存しました。");
+      setEditDrafts((current) => ({
+        ...current,
+        [item.id]: { improvement: saved.improvement, memo: saved.memo },
+      }));
+      setMessage("編集を保存しました。");
     } catch {
-      setMessage("メモの保存に失敗しました。");
+      setMessage("編集の保存に失敗しました。");
     } finally {
-      setSavingMemoId("");
+      setSavingEditId("");
     }
   }
 
@@ -470,8 +540,8 @@ export function ImprovementCandidateList({
       {tab === "done" ? (
         <div className="max-h-[640px] space-y-3 overflow-y-auto pr-1">
           {doneItems.map((item) => {
-            const memoDraft = memoDrafts[item.id] ?? item.memo;
-            const memoChanged = memoDraft.trim() !== item.memo;
+            const editDraft = getEditDraft(item);
+            const editChanged = hasEditChanges(item, editDraft);
 
             return (
               <article key={item.id} className="rounded-md border border-emerald-100 bg-white p-3 text-sm shadow-sm">
@@ -501,31 +571,13 @@ export function ImprovementCandidateList({
                   <div className="min-w-0 truncate">{item.actor}</div>
                 </div>
 
-                <div className="mt-3 rounded-md border border-emerald-100 bg-emerald-50/50 p-2 text-xs leading-relaxed text-zinc-700">
-                  <div className="font-semibold text-zinc-900">改善内容</div>
-                  <div className="mt-1 whitespace-pre-wrap">{item.improvement}</div>
-                </div>
-
-                <div className="mt-3 rounded-md border border-zinc-200 bg-white p-2">
-                  <label className="block">
-                    <span className="mb-1 block text-[11px] font-semibold text-zinc-600">メモ</span>
-                    <textarea
-                      value={memoDraft}
-                      onChange={(event) => setMemoDrafts((current) => ({ ...current, [item.id]: event.target.value }))}
-                      placeholder="例: 売れたら削除 / 1週間後にCTRを見る"
-                      rows={2}
-                      className="w-full resize-none rounded-md border border-zinc-200 bg-zinc-50 px-2 py-2 text-xs leading-relaxed text-zinc-800 outline-none focus:border-zinc-400"
-                    />
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => void saveMemo(item)}
-                    disabled={savingMemoId === item.id || !memoChanged}
-                    className="mt-2 inline-flex h-8 w-full items-center justify-center gap-2 rounded-md border border-zinc-200 bg-white px-3 text-xs font-semibold text-zinc-700 disabled:cursor-not-allowed disabled:text-zinc-300"
-                  >
-                    {savingMemoId === item.id ? "保存中" : "メモを保存"}
-                  </button>
-                </div>
+                <ExistingImprovementEditor
+                  draft={editDraft}
+                  isSaving={savingEditId === item.id}
+                  hasChanges={editChanged}
+                  onChange={(value) => updateEditDraft(item.id, value)}
+                  onSave={() => void saveEditedImprovement(item)}
+                />
 
                 <ActionLinks title={item.title} itemUrl={item.itemUrl} />
                 <button
@@ -535,7 +587,7 @@ export function ImprovementCandidateList({
                   className="mt-3 inline-flex h-8 w-full items-center justify-center gap-2 rounded-md border border-zinc-200 bg-white px-3 text-xs font-semibold text-zinc-600 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:text-zinc-300"
                 >
                   <Trash2 className="size-3.5" />
-                  {removingId === item.id ? "削除中" : "うまくいったので削除"}
+                  {removingId === item.id ? "削除中" : "削除"}
                 </button>
               </article>
             );
@@ -554,6 +606,8 @@ export function ImprovementCandidateList({
           {revisitItems.map((item, index) => {
             const trafficItem = item.trafficItem;
             const draft = getDraft(item.itemId);
+            const editDraft = getEditDraft(item);
+            const editChanged = hasEditChanges(item, editDraft);
             const isSaving = savingId === item.itemId;
             const recommendation = trafficItem ? getRecommendation(trafficItem) : null;
 
@@ -607,13 +661,15 @@ export function ImprovementCandidateList({
                       {item.at}
                     </span>
                   </div>
-                  <div className="mt-1 whitespace-pre-wrap">{item.improvement}</div>
-                  {item.memo ? (
-                    <div className="mt-2 border-t border-amber-100 pt-2">
-                      <span className="font-semibold text-zinc-900">メモ:</span> {item.memo}
-                    </div>
-                  ) : null}
                 </div>
+
+                <ExistingImprovementEditor
+                  draft={editDraft}
+                  isSaving={savingEditId === item.id}
+                  hasChanges={editChanged}
+                  onChange={(value) => updateEditDraft(item.id, value)}
+                  onSave={() => void saveEditedImprovement(item)}
+                />
 
                 <ActionLinks title={item.title} itemUrl={item.itemUrl} />
                 <DraftEditor
@@ -630,7 +686,7 @@ export function ImprovementCandidateList({
                   className="mt-3 inline-flex h-8 w-full items-center justify-center gap-2 rounded-md border border-zinc-200 bg-white px-3 text-xs font-semibold text-zinc-600 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:text-zinc-300"
                 >
                   <Trash2 className="size-3.5" />
-                  {removingId === item.id ? "削除中" : "うまくいったので削除"}
+                  {removingId === item.id ? "削除中" : "削除"}
                 </button>
               </article>
             );

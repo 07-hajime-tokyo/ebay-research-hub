@@ -365,7 +365,14 @@ async function getEbayImprovementLogRow(id: string) {
   return rows?.[0] ?? null;
 }
 
-export async function updateEbayImprovementMemo(id: string, memo: string, actorEmail?: string) {
+export async function updateEbayImprovementLog(
+  id: string,
+  input: {
+    improvement: string;
+    memo: string;
+  },
+  actorEmail?: string,
+) {
   const row = await getEbayImprovementLogRow(id);
   if (!row) return null;
 
@@ -375,11 +382,13 @@ export async function updateEbayImprovementMemo(id: string, memo: string, actorE
       method: "PATCH",
       headers: { Prefer: "return=representation" },
       body: JSON.stringify({
+        detail: input.improvement,
         metadata: {
           ...(row.metadata ?? {}),
-          memo,
-          memoUpdatedAt: new Date().toISOString(),
-          memoUpdatedBy: actorEmail ?? "local",
+          improvement: input.improvement,
+          memo: input.memo,
+          updatedAt: new Date().toISOString(),
+          updatedBy: actorEmail ?? "local",
         },
       }),
     },
