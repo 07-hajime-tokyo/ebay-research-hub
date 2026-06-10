@@ -77,7 +77,11 @@ export type EbayImprovement = {
   itemId: string;
   title: string;
   itemUrl: string;
+  imageUrl: string;
   improvement: string;
+  memo: string;
   at: string;
+  createdAt: string;
   actor: string;
+  resolved: boolean;
 };
