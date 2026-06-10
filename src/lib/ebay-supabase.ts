@@ -1,5 +1,5 @@
 import { readFile } from "node:fs/promises";
-import type { TrafficItem } from "@/lib/types";
+import type { EbayImprovement, TrafficItem } from "@/lib/types";
 
 type EbayTrafficRow = {
   item_id: string;
@@ -67,6 +67,16 @@ type EbayTaskRow = {
   note: string | null;
 };
 
+type ImprovementLogRow = {
+  id: string;
+  target_id: string | null;
+  title: string;
+  detail: string | null;
+  actor_email: string | null;
+  created_at: string;
+  metadata: Record<string, unknown> | null;
+};
+
 let localEnvLoaded = false;
 
 async function loadLocalEnvFallback() {
@@ -101,6 +111,17 @@ function formatLogDate(value: string) {
   }).format(date);
 }
 
+function formatLogDay(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat("ja-JP", {
+    timeZone: "Asia/Tokyo",
+    year: "numeric",
+    month: "numeric",
+    day: "numeric",
+  }).format(date);
+}
+
 function formatAcquiredAt(value: string | null) {
   if (!value) return "";
   const date = new Date(value);
@@ -114,6 +135,26 @@ function formatAcquiredAt(value: string | null) {
     minute: "2-digit",
   }).format(date);
   return parts.replace("T", " ");
+}
+
+function metadataString(metadata: Record<string, unknown> | null | undefined, key: string) {
+  const value = metadata?.[key];
+  return typeof value === "string" ? value : "";
+}
+
+function improvementRowToItem(row: ImprovementLogRow): EbayImprovement {
+  const itemId = row.target_id ?? metadataString(row.metadata, "itemId");
+  const itemUrl = metadataString(row.metadata, "itemUrl") || (itemId ? `https://www.ebay.com/itm/${itemId}` : "");
+
+  return {
+    id: row.id,
+    itemId,
+    title: metadataString(row.metadata, "itemTitle") || row.title,
+    itemUrl,
+    improvement: metadataString(row.metadata, "improvement") || row.detail || "",
+    at: formatLogDay(row.created_at),
+    actor: row.actor_email ?? "system",
+  };
 }
 
 export async function supabaseRequest<T>(path: string, options: RequestInit = {}) {
@@ -254,6 +295,46 @@ export async function getEbayChangeLogs() {
     at: formatLogDate(row.created_at),
     actor: row.actor_email ?? "system",
   }));
+}
+
+export async function getEbayImprovementLogs() {
+  const rows = await supabaseGet<ImprovementLogRow[]>(
+    "change_logs?select=id,target_id,title,detail,actor_email,created_at,metadata&app_key=eq.ebay&action=eq.improve&target_type=eq.ebay_traffic_item&order=created_at.desc&limit=100",
+  );
+  if (!rows) return [];
+  return rows.map(improvementRowToItem);
+}
+
+export async function createEbayImprovementLog(input: {
+  itemId: string;
+  title: string;
+  itemUrl: string;
+  improvement: string;
+}, actorEmail?: string) {
+  const rows = await supabaseRequest<ImprovementLogRow[]>(
+    "change_logs?select=id,target_id,title,detail,actor_email,created_at,metadata",
+    {
+      method: "POST",
+      headers: { Prefer: "return=representation" },
+      body: JSON.stringify({
+        app_key: "ebay",
+        action: "improve",
+        target_type: "ebay_traffic_item",
+        target_id: input.itemId,
+        title: input.title,
+        detail: input.improvement,
+        actor_email: actorEmail ?? "local",
+        metadata: {
+          itemId: input.itemId,
+          itemTitle: input.title,
+          itemUrl: input.itemUrl,
+          improvement: input.improvement,
+        },
+      }),
+    },
+  );
+
+  return rows?.[0] ? improvementRowToItem(rows[0]) : null;
 }
 
 export async function getEbayTasks() {

@@ -13,13 +13,14 @@ import {
 } from "lucide-react";
 import { signOut } from "@/app/actions";
 import { ChangeHistoryList } from "@/components/change-history-list";
-import { getImprovementCandidates, ImprovementCandidateList } from "@/components/improvement-candidate-list";
+import { ImprovementCandidateList } from "@/components/improvement-candidate-list";
 import { ResearchScheduleWorkspace } from "@/components/research-schedule-workspace";
 import { TrafficFilters } from "@/components/traffic-filters";
 import { TrafficRankingTable } from "@/components/traffic-ranking-table";
 import { requireAppUser } from "@/lib/auth";
-import { getEbayChangeLogs, getEbayTasks, getEbayTrafficItems } from "@/lib/ebay-supabase";
+import { getEbayChangeLogs, getEbayImprovementLogs, getEbayTasks, getEbayTrafficItems } from "@/lib/ebay-supabase";
 import { formatNumber } from "@/lib/format";
+import { getImprovementCandidates } from "@/lib/improvement-candidates";
 import { genreBadgeClass, rankBadgeClass } from "@/lib/traffic-styles";
 import {
   filterTrafficItems,
@@ -72,6 +73,7 @@ export default async function Home({
   const sourceTrafficItems = supabaseTrafficItems?.length ? supabaseTrafficItems : trafficItems;
   const tasks = await getEbayTasks();
   const changeHistory = await getEbayChangeLogs();
+  const improvements = await getEbayImprovementLogs();
   const { todayKey, nowLabel } = getJstNow();
   const filteredTraffic = sortTrafficItems(filterTrafficItems(sourceTrafficItems, params.genre), params.trafficSort);
   const summary = summarizeTraffic(filteredTraffic);
@@ -387,7 +389,7 @@ export default async function Home({
                     </span>
                   </div>
                   <div className="p-4">
-                    <ImprovementCandidateList items={improvementCandidates} />
+                    <ImprovementCandidateList items={improvementCandidates} initialImprovements={improvements} />
                   </div>
                 </section>
 

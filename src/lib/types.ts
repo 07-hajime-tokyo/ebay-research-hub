@@ -71,3 +71,13 @@ export type TrafficItem = {
   imageUrl: string;
   genre: TrafficGenre;
 };
+
+export type EbayImprovement = {
+  id: string;
+  itemId: string;
+  title: string;
+  itemUrl: string;
+  improvement: string;
+  at: string;
+  actor: string;
+};
