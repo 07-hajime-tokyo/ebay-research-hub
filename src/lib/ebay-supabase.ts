@@ -146,6 +146,14 @@ function metadataBoolean(metadata: Record<string, unknown> | null | undefined, k
   return metadata?.[key] === true;
 }
 
+function formatActor(email: string | null | undefined) {
+  const normalized = email?.toLowerCase() ?? "";
+  if (normalized === "07.hajime.tokyo@gmail.com") return "07haj";
+  if (normalized === "01.murakami@gmail.com") return "01mur";
+  if (normalized === "talk.japan.999@gmail.com") return "talk";
+  return email ?? "system";
+}
+
 function improvementRowToItem(row: ImprovementLogRow): EbayImprovement {
   const itemId = row.target_id ?? metadataString(row.metadata, "itemId");
   const itemUrl = metadataString(row.metadata, "itemUrl") || (itemId ? `https://www.ebay.com/itm/${itemId}` : "");
@@ -160,7 +168,7 @@ function improvementRowToItem(row: ImprovementLogRow): EbayImprovement {
     memo: metadataString(row.metadata, "memo"),
     at: formatLogDay(row.created_at),
     createdAt: row.created_at,
-    actor: row.actor_email ?? "system",
+    actor: formatActor(row.actor_email),
     resolved: metadataBoolean(row.metadata, "resolved"),
   };
 }
@@ -301,7 +309,7 @@ export async function getEbayChangeLogs() {
     title: row.title,
     detail: row.detail ?? "",
     at: formatLogDate(row.created_at),
-    actor: row.actor_email ?? "system",
+    actor: formatActor(row.actor_email),
   }));
 }
 
