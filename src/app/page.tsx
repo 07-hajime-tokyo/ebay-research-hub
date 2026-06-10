@@ -1,8 +1,6 @@
 import {
   BarChart3,
   Boxes,
-  CalendarDays,
-  Clock3,
   Eye,
   History,
   MousePointerClick,
@@ -14,7 +12,7 @@ import {
 import { signOut } from "@/app/actions";
 import { ChangeHistoryList } from "@/components/change-history-list";
 import { ImprovementCandidateList } from "@/components/improvement-candidate-list";
-import { ResearchScheduleWorkspace } from "@/components/research-schedule-workspace";
+import { TaskDashboard } from "@/components/task-dashboard";
 import { TrafficFilters } from "@/components/traffic-filters";
 import { TrafficRankingTable } from "@/components/traffic-ranking-table";
 import { requireAppUser } from "@/lib/auth";
@@ -51,17 +49,6 @@ function getJstNow() {
   return { todayKey: dateParts, nowLabel: timeParts };
 }
 
-function formatTaskDateLabel(key: string) {
-  const date = new Date(`${key}T00:00:00+09:00`);
-  if (Number.isNaN(date.getTime())) return key;
-  return new Intl.DateTimeFormat("ja-JP", {
-    timeZone: "Asia/Tokyo",
-    month: "numeric",
-    day: "numeric",
-    weekday: "short",
-  }).format(date);
-}
-
 export default async function Home({
   searchParams,
 }: {
@@ -95,30 +82,6 @@ export default async function Home({
     { label: "総閲覧", value: formatNumber(summary.totalViews), sub: "views", icon: MousePointerClick },
     { label: "販売数", value: formatNumber(summary.totalSales), sub: `平均CTR ${formatRate(summary.averageCtr)}`, icon: TrendingUp },
   ];
-
-  const todayTasks = tasks
-    .filter((task) => task.date === todayKey)
-    .sort((a, b) => (a.due || "").localeCompare(b.due || ""))
-    .slice(0, 4)
-    .map((task) => ({
-      title: task.title,
-      stage: task.stage,
-      owner: task.owner || "未設定",
-      time: task.due || "--:--",
-      minutes: task.minutes,
-    }));
-  const upcomingTasks = tasks
-    .filter((task) => task.date && task.date > todayKey)
-    .sort((a, b) => `${a.date}${a.due}`.localeCompare(`${b.date}${b.due}`))
-    .slice(0, 5)
-    .map((task) => ({
-      title: task.title,
-      date: formatTaskDateLabel(task.date),
-      stage: task.stage,
-      owner: task.owner || "未設定",
-      time: task.due || "--:--",
-      minutes: task.minutes,
-    }));
 
   return (
     <main className="min-h-screen bg-[#f7f6f2]">
@@ -192,84 +155,7 @@ export default async function Home({
           </header>
 
           <div className="space-y-9 p-4 sm:p-7">
-            <section className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-              <div className="rounded-md border border-[#d8cbb8] bg-[#fbfaf6] p-4 text-[#241f17] shadow-sm">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div className="flex items-center gap-3">
-                    <div className="flex size-8 items-center justify-center rounded-md bg-[#211e18] text-[#f3d27b]">
-                      <CalendarDays className="size-4" />
-                    </div>
-                    <div>
-                      <h2 className="font-semibold">本日のタスク</h2>
-                      <div className="mt-1 text-xs text-[#7d6f59]">今日進める出品改善</div>
-                    </div>
-                  </div>
-                  <span className="rounded-full border border-[#d8cbb8] bg-[#efe5d4] px-3 py-1 font-mono text-xs font-semibold">
-                    {todayTasks.length} tasks
-                  </span>
-                </div>
-
-                <div className="mt-4 grid gap-3 md:grid-cols-2">
-                  {todayTasks.map((task) => (
-                    <div key={task.title} className="rounded-md border border-[#d8cbb8] bg-[#fffaf1] p-3 shadow-sm">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="line-clamp-2 text-sm font-semibold">{task.title}</div>
-                        <span className="rounded bg-[#211e18] px-2 py-1 font-mono text-[11px] text-white">{task.time}</span>
-                      </div>
-                      <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] text-[#7d6f59]">
-                        <span className="rounded border border-[#d8cbb8] bg-white px-2 py-0.5">{task.stage}</span>
-                        <span>{task.owner}</span>
-                        <span>{task.minutes}m</span>
-                      </div>
-                    </div>
-                  ))}
-                  {!todayTasks.length ? (
-                    <div className="rounded-md border border-dashed border-[#d8cbb8] bg-[#fffaf1] p-4 text-sm text-[#7d6f59] md:col-span-2">
-                      本日のタスクはまだありません。
-                    </div>
-                  ) : null}
-                </div>
-              </div>
-
-              <div className="rounded-md border border-[#d8cbb8] bg-[#fbfaf6] p-4 text-[#241f17] shadow-sm">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div className="flex items-center gap-3">
-                    <div className="flex size-8 items-center justify-center rounded-md bg-[#211e18] text-[#f3d27b]">
-                      <Clock3 className="size-4" />
-                    </div>
-                    <div>
-                      <h2 className="font-semibold">これからのタスク</h2>
-                      <div className="mt-1 text-xs text-[#7d6f59]">明日以降の確認予定</div>
-                    </div>
-                  </div>
-                  <span className="rounded-full border border-[#d8cbb8] bg-[#efe5d4] px-3 py-1 font-mono text-xs font-semibold">
-                    {upcomingTasks.length} tasks
-                  </span>
-                </div>
-
-                <div className="mt-4 space-y-2">
-                  {upcomingTasks.map((task) => (
-                    <div key={task.title} className="grid grid-cols-[82px_1fr_auto] items-center gap-3 rounded-md border border-[#d8cbb8] bg-[#fffaf1] p-3 shadow-sm">
-                      <div className="rounded border border-[#d8cbb8] bg-white px-2 py-1 text-center text-xs font-semibold text-[#7d6f59]">{task.date}</div>
-                      <div className="min-w-0">
-                        <div className="line-clamp-1 text-sm font-semibold">{task.title}</div>
-                        <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-[#7d6f59]">
-                          <span className="rounded border border-[#d8cbb8] bg-white px-2 py-0.5">{task.stage}</span>
-                          <span>{task.owner}</span>
-                          <span>{task.minutes}m</span>
-                        </div>
-                      </div>
-                      <span className="rounded bg-[#211e18] px-2 py-1 font-mono text-[11px] text-white">{task.time}</span>
-                    </div>
-                  ))}
-                  {!upcomingTasks.length ? (
-                    <div className="rounded-md border border-dashed border-[#d8cbb8] bg-[#fffaf1] p-4 text-sm text-[#7d6f59]">
-                      これからのタスクはまだありません。
-                    </div>
-                  ) : null}
-                </div>
-              </div>
-            </section>
+            <TaskDashboard initialTasks={tasks} todayKey={todayKey} nowLabel={nowLabel} />
 
             <section className="grid gap-5 md:grid-cols-4">
               {kpis.map(({ label, value, sub, icon: Icon }) => (
@@ -410,7 +296,6 @@ export default async function Home({
               </div>
             </section>
 
-            <ResearchScheduleWorkspace initialTasks={tasks} todayKey={todayKey} nowLabel={nowLabel} />
           </div>
         </section>
       </div>

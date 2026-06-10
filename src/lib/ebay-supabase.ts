@@ -1,5 +1,6 @@
 import { readFile } from "node:fs/promises";
 import type { EbayImprovement, TrafficItem } from "@/lib/types";
+import { dropProjectHubTask, syncProjectHubTask } from "@/lib/project-hub-notion";
 
 type EbayTrafficRow = {
   item_id: string;
@@ -469,6 +470,7 @@ export async function createEbayTask(task: Partial<EbayTask>, actorEmail?: strin
       detail: created.title,
       actorEmail,
     });
+    await syncProjectHubTask(created);
   }
   return created;
 }
@@ -492,6 +494,7 @@ export async function updateEbayTask(id: string, task: Partial<EbayTask>, actorE
       detail: updated.title,
       actorEmail,
     });
+    await syncProjectHubTask(updated);
   }
   return updated;
 }
@@ -508,4 +511,5 @@ export async function deleteEbayTask(id: string, actorEmail?: string) {
     title: "タスクを削除",
     actorEmail,
   });
+  await dropProjectHubTask(id);
 }

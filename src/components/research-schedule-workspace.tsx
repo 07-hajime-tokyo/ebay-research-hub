@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type SetStateAction } from "react";
 import { CalendarDays, GripVertical, Plus, Trash2, X } from "lucide-react";
 import type { EbayTask } from "@/lib/ebay-supabase";
 
@@ -119,15 +119,19 @@ async function deleteTaskRequest(id: string) {
 
 export function ResearchScheduleWorkspace({
   initialTasks = [],
+  tasks: controlledTasks,
+  onTasksChange,
   todayKey,
   nowLabel,
 }: {
   initialTasks?: ResearchTask[];
+  tasks?: ResearchTask[];
+  onTasksChange?: (tasks: ResearchTask[]) => void;
   todayKey: string;
   nowLabel: string;
 }) {
   const emptyTask = useMemo(() => makeEmptyTask(todayKey), [todayKey]);
-  const [tasks, setTasks] = useState(initialTasks);
+  const [internalTasks, setInternalTasks] = useState(initialTasks);
   const [view, setView] = useState<ViewMode>("day");
   const [selectedId, setSelectedId] = useState(initialTasks[0]?.id ?? "");
   const [form, setForm] = useState<ResearchTaskInput>(() =>
@@ -138,6 +142,15 @@ export function ResearchScheduleWorkspace({
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [message, setMessage] = useState("");
+  const tasks = controlledTasks ?? internalTasks;
+
+  function setTasks(next: SetStateAction<ResearchTask[]>) {
+    if (controlledTasks) {
+      onTasksChange?.(typeof next === "function" ? next(tasks) : next);
+      return;
+    }
+    setInternalTasks(next);
+  }
 
   const selectedTask = tasks.find((task) => task.id === selectedId);
   const todayTasks = useMemo(() => tasks.filter((task) => task.date === todayKey), [tasks, todayKey]);
