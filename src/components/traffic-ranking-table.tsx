@@ -1,8 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { ExternalLink } from "lucide-react";
+import { BarChart3, ExternalLink, History } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { ebayProductResearchUrl, ebaySearchUrl } from "@/lib/ebay-links";
 import { formatNumber } from "@/lib/format";
 import { genreBadgeClass } from "@/lib/traffic-styles";
 import type { TrafficItem } from "@/lib/types";
@@ -67,16 +68,16 @@ export function TrafficRankingTable({ items }: { items: TrafficItem[] }) {
   return (
     <div>
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[760px] table-fixed text-left text-sm">
+        <table className="w-full min-w-[900px] table-fixed text-left text-sm">
           <colgroup>
-            <col className="w-[38%]" />
+            <col className="w-[34%]" />
             <col className="w-[82px]" />
             <col className="w-[72px]" />
             <col className="w-[88px]" />
             <col className="w-[72px]" />
             <col className="w-[64px]" />
             <col className="w-[64px]" />
-            <col className="w-[64px]" />
+            <col className="w-[150px]" />
           </colgroup>
           <thead className="border-y border-[#e5e7eb] bg-[#f3f4f6] text-xs font-semibold text-[#52525b]">
             <tr>
@@ -95,7 +96,7 @@ export function TrafficRankingTable({ items }: { items: TrafficItem[] }) {
               <th className="px-2 py-3 text-right">
                 <HeaderHelp label="購入率" help="商品ページを開いた人のうち、購入につながった割合です。" align="right" />
               </th>
-              <th className="px-2 py-3">リンク</th>
+              <th className="px-2 py-3">調査</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-[#e7edf3]">
@@ -151,15 +152,38 @@ export function TrafficRankingTable({ items }: { items: TrafficItem[] }) {
               <td className="px-2 py-3"><MetricCell value={formatRate(item.ctr)} mutedDelta /></td>
               <td className="px-2 py-3"><MetricCell value={formatRate(item.conversionRate)} mutedDelta /></td>
               <td className="px-2 py-3">
-                <a
-                  href={item.itemUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex h-8 items-center gap-1 rounded-md border border-sky-200 bg-sky-50 px-2 text-xs font-semibold text-sky-700 shadow-sm transition hover:border-sky-300 hover:bg-sky-100"
-                >
-                  <span className="hidden sm:inline">開く</span>
-                  <ExternalLink className="size-3" />
-                </a>
+                <div className="grid gap-1.5">
+                  <a
+                    href={item.itemUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    title="eBayの出品ページを開く"
+                    className="inline-flex h-7 items-center justify-center gap-1 rounded-md border border-sky-200 bg-sky-50 px-2 text-[11px] font-semibold text-sky-700 shadow-sm transition hover:border-sky-300 hover:bg-sky-100"
+                  >
+                    出品
+                    <ExternalLink className="size-3" />
+                  </a>
+                  <a
+                    href={ebayProductResearchUrl(item.title)}
+                    target="_blank"
+                    rel="noreferrer"
+                    title="Seller Hub Product Research / Terapeakを開く"
+                    className="inline-flex h-7 items-center justify-center gap-1 rounded-md border border-indigo-200 bg-indigo-50 px-2 text-[11px] font-semibold text-indigo-700 shadow-sm transition hover:border-indigo-300 hover:bg-indigo-100"
+                  >
+                    テラピーク
+                    <BarChart3 className="size-3" />
+                  </a>
+                  <a
+                    href={ebaySearchUrl(item.title, "sold")}
+                    target="_blank"
+                    rel="noreferrer"
+                    title="eBayのSold履歴検索を開く"
+                    className="inline-flex h-7 items-center justify-center gap-1 rounded-md border border-emerald-200 bg-emerald-50 px-2 text-[11px] font-semibold text-emerald-700 shadow-sm transition hover:border-emerald-300 hover:bg-emerald-100"
+                  >
+                    Sold履歴
+                    <History className="size-3" />
+                  </a>
+                </div>
               </td>
               </tr>
             ))}

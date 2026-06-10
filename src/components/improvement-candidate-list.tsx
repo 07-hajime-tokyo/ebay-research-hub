@@ -1,22 +1,10 @@
 import { BadgeDollarSign, ExternalLink, Search } from "lucide-react";
+import { ebaySearchUrl } from "@/lib/ebay-links";
 import { formatNumber } from "@/lib/format";
 import type { TrafficItem } from "@/lib/types";
 
 function formatRate(value: number) {
   return `${(value * 100).toFixed(value > 0 && value < 0.01 ? 2 : 1)}%`;
-}
-
-function ebaySearchUrl(title: string, mode: "sold" | "active") {
-  const params = new URLSearchParams({
-    _nkw: title,
-  });
-
-  if (mode === "sold") {
-    params.set("LH_Sold", "1");
-    params.set("LH_Complete", "1");
-  }
-
-  return `https://www.ebay.com/sch/i.html?${params.toString()}`;
 }
 
 function getRecommendation(item: TrafficItem) {
